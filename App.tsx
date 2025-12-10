@@ -73,7 +73,7 @@ const App: React.FC = () => {
       }
 
       try {
-        // Initialize Database (Seed if needed)
+        // Initialize Database (Seed if needed or Load from LocalStorage)
         await databaseService.seed();
         
         // Parallel Fetch for Speed
@@ -598,8 +598,11 @@ const App: React.FC = () => {
 
     // 3. Client Portal View (Simulation)
     if (currentView === 'client-portal') {
-        // Mock a specific logged-in client context
-        const demoClient = clients[0]; 
+        // Mock a specific logged-in client context or default to first if available
+        const demoClient = clients.length > 0 ? clients[0] : null;
+        if (!demoClient) {
+             return <div className="p-10 text-center text-slate-500">No active clients found for portal demo.</div>
+        }
         return <ClientPortal client={demoClient} onUploadDocs={handleClientPortalUpload} />;
     }
 
@@ -722,7 +725,7 @@ const App: React.FC = () => {
             );
         case 'reconciliation':
             // Pass clientId if we want specific, but global recon view might be needed for staff
-            return <BankReconciliation documents={documents} onPostAdjustment={handlePostJournalEntry} />;
+            return <BankReconciliation documents={documents} clients={clients} onPostAdjustment={handlePostJournalEntry} />;
         case 'clients':
             return <ClientDirectory clients={clients} onSelectClient={handleSelectClient} />;
         case 'reports':

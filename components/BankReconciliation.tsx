@@ -1,27 +1,29 @@
 
 import React, { useState, useEffect } from 'react';
-import { DocumentRecord, BankTransaction, PostedGLEntry } from '../types';
-import { CheckCircle2, AlertTriangle, ArrowRightLeft, Upload, Search, Link2, X, PlusCircle, Calculator, Loader2 } from 'lucide-react';
+import { DocumentRecord, BankTransaction, PostedGLEntry, Client } from '../types';
+import { CheckCircle2, AlertTriangle, ArrowRightLeft, Upload, Search, Link2, X, PlusCircle, Calculator, Loader2, Building2 } from 'lucide-react';
 import { databaseService } from '../services/database';
 
 interface Props {
   documents: DocumentRecord[];
+  clients: Client[]; // Added to support client switching
   onPostAdjustment?: (entries: PostedGLEntry[]) => void;
 }
 
-const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) => {
+const BankReconciliation: React.FC<Props> = ({ documents, clients, onPostAdjustment }) => {
+  const [selectedClientId, setSelectedClientId] = useState<string>(clients[0]?.id || '');
   const [bankTxns, setBankTxns] = useState<BankTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTxn, setSelectedTxn] = useState<BankTransaction | null>(null);
   const [adjustment, setAdjustment] = useState<{ diff: number, type: 'fee' | 'interest' | 'other', docId: string | null } | null>(null);
 
-  // Load Real Data from Firestore
+  // Load Real Data from Firestore specific to the selected client
   useEffect(() => {
       const loadTxns = async () => {
+          if(!selectedClientId) return;
           setLoading(true);
           try {
-            // In a real multi-tenant view, we'd pass clientId. For demo generic view, fetch all.
-            const data = await databaseService.getBankTransactions();
+            const data = await databaseService.getBankTransactionsByClient(selectedClientId);
             setBankTxns(data);
           } catch (e) {
               console.error(e);
@@ -30,10 +32,16 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
           }
       };
       loadTxns();
-  }, []);
+  }, [selectedClientId]);
 
-  // Filter approved docs only
-  const bookDocs = documents.filter(d => d.status === 'approved');
+  // Find current client object
+  const currentClient = clients.find(c => c.id === selectedClientId);
+
+  // Strict Filter: Only allow matching with documents belonging to the currently selected client
+  const bookDocs = documents.filter(d => 
+      d.status === 'approved' && 
+      d.client_name === currentClient?.name
+  );
 
   const getMatchScore = (txn: BankTransaction, doc: DocumentRecord) => {
     let score = 0;
@@ -104,7 +112,7 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
       
       const newEntry: PostedGLEntry = {
           id: `ADJ-${Date.now()}`,
-          clientId: selectedTxn.clientId || 'C001',
+          clientId: selectedClientId,
           date: selectedTxn.date,
           doc_no: `BANK-ADJ-${selectedTxn.id}`,
           description: `Adjustment: ${selectedTxn.description}`,
@@ -118,7 +126,7 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
       // Balancing side (Bank)
       const balancingEntry: PostedGLEntry = {
           id: `ADJ-BANK-${Date.now()}`,
-          clientId: selectedTxn.clientId || 'C001',
+          clientId: selectedClientId,
           date: selectedTxn.date,
           doc_no: `BANK-ADJ-${selectedTxn.id}`,
           description: `Adjustment: ${selectedTxn.description}`,
@@ -141,7 +149,7 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
       
       const newEntry: PostedGLEntry = {
           id: `DIRECT-${Date.now()}`,
-          clientId: txn.clientId || 'C001',
+          clientId: selectedClientId,
           date: txn.date,
           doc_no: `BANK-DIRECT-${txn.id}`,
           description: txn.description,
@@ -154,7 +162,7 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
 
       const bankEntry: PostedGLEntry = {
           id: `DIRECT-BANK-${Date.now()}`,
-          clientId: txn.clientId || 'C001',
+          clientId: selectedClientId,
           date: txn.date,
           doc_no: `BANK-DIRECT-${txn.id}`,
           description: txn.description,
@@ -170,14 +178,6 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
       // Update DB Status
       confirmMatch(txn, null);
   };
-
-  if (loading) {
-      return (
-          <div className="h-full flex items-center justify-center">
-              <Loader2 className="animate-spin text-blue-600" size={32}/>
-          </div>
-      )
-  }
 
   return (
     <div className="animate-in fade-in duration-500 h-full flex flex-col relative">
@@ -245,11 +245,28 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
           <h2 className="text-2xl font-bold text-slate-800">ระบบกระทบยอดธนาคาร (Bank Reconciliation)</h2>
           <p className="text-slate-500">จัดการจับคู่รายการและบันทึกผลต่างอัตโนมัติ (Smart Adjustment)</p>
         </div>
-        <button className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-sm">
-            <Upload size={16} /> นำเข้า Statement
-        </button>
+        <div className="flex items-center gap-3">
+            <div className="relative">
+                <Building2 className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                <select 
+                    value={selectedClientId} 
+                    onChange={(e) => setSelectedClientId(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-100 outline-none min-w-[200px]"
+                >
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+            </div>
+            <button className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 flex items-center gap-2 shadow-sm">
+                <Upload size={16} /> นำเข้า Statement
+            </button>
+        </div>
       </div>
 
+      {loading ? (
+          <div className="h-full flex items-center justify-center">
+              <Loader2 className="animate-spin text-blue-600" size={32}/>
+          </div>
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[calc(100vh-200px)]">
          {/* LEFT: Bank Statement (The Truth) */}
          <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
@@ -261,7 +278,9 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
                  <span className="text-xs text-slate-500">{bankTxns.length} รายการ</span>
              </div>
              <div className="overflow-y-auto flex-1 p-0">
-                 {bankTxns.map(txn => {
+                 {bankTxns.length === 0 ? (
+                     <div className="p-8 text-center text-slate-400 text-sm">ไม่พบรายการเดินบัญชีสำหรับลูกค้า {currentClient?.name}</div>
+                 ) : bankTxns.map(txn => {
                      const isSelected = selectedTxn?.id === txn.id;
                      const suggestion = getSuggestedMatch(txn);
                      
@@ -368,9 +387,11 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
                          })()}
 
                          <div className="border-t border-slate-200 my-4"></div>
-                         <p className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-2">เอกสารทั้งหมดที่ยังไม่ได้กระทบยอด</p>
+                         <p className="text-xs text-slate-500 font-bold uppercase tracking-wide mb-2">เอกสารทั้งหมดที่ยังไม่ได้กระทบยอด ({bookDocs.length})</p>
                          
-                         {bookDocs.map(doc => {
+                         {bookDocs.length === 0 ? (
+                             <div className="text-center py-4 text-xs text-slate-400">ไม่มีเอกสารที่ได้รับการอนุมัติสำหรับลูกค้า {currentClient?.name}</div>
+                         ) : bookDocs.map(doc => {
                              const diff = Math.abs(Math.abs(selectedTxn.amount) - doc.amount);
                              return (
                              <div key={doc.id} onClick={() => initiateMatch(selectedTxn, doc.id)} className="bg-white p-3 rounded-lg border border-slate-200 hover:border-blue-400 cursor-pointer mb-2">
@@ -394,6 +415,7 @@ const BankReconciliation: React.FC<Props> = ({ documents, onPostAdjustment }) =>
              )}
          </div>
       </div>
+      )}
     </div>
   );
 };

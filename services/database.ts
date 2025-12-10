@@ -18,6 +18,8 @@ import { Client, DocumentRecord, Staff, PostedGLEntry, FixedAsset, VendorRule, B
 
 // --- SEED DATA (In-Memory Fallback & Initial Real DB Population) ---
 
+const STORAGE_KEY = 'WE_ACCOUNTING_DB_V1';
+
 let SEED_STAFF: Staff[] = [
   { id: 'S001', name: 'Somsri Account', role: 'Manager', email: 'somsri@weaccounting.co.th', active_tasks: 12 },
   { id: 'S002', name: 'John Ledger', role: 'Senior Accountant', email: 'john@weaccounting.co.th', active_tasks: 8 },
@@ -164,6 +166,38 @@ let SEED_LOGS: ActivityLog[] = [
     { id: 'L004', timestamp: new Date(Date.now() - 500000).toISOString(), user_id: 'S001', user_name: 'Somsri Account', action: 'CLOSE_PERIOD', details: 'Closed VAT Period for Design Studio 99', status: 'success' },
 ];
 
+// --- STORAGE HELPER (Offline Persistence) ---
+const saveToStorage = () => {
+    if (typeof window !== 'undefined') {
+        const data = {
+            SEED_CLIENTS, SEED_DOCS, SEED_STAFF, SEED_GL, SEED_ASSETS, SEED_RULES, SEED_BANK, SEED_LOGS
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+};
+
+const loadFromStorage = () => {
+    if (typeof window !== 'undefined') {
+        const data = localStorage.getItem(STORAGE_KEY);
+        if (data) {
+            try {
+                const parsed = JSON.parse(data);
+                if(parsed.SEED_CLIENTS) SEED_CLIENTS = parsed.SEED_CLIENTS;
+                if(parsed.SEED_DOCS) SEED_DOCS = parsed.SEED_DOCS;
+                if(parsed.SEED_STAFF) SEED_STAFF = parsed.SEED_STAFF;
+                if(parsed.SEED_GL) SEED_GL = parsed.SEED_GL;
+                if(parsed.SEED_ASSETS) SEED_ASSETS = parsed.SEED_ASSETS;
+                if(parsed.SEED_RULES) SEED_RULES = parsed.SEED_RULES;
+                if(parsed.SEED_BANK) SEED_BANK = parsed.SEED_BANK;
+                if(parsed.SEED_LOGS) SEED_LOGS = parsed.SEED_LOGS;
+                console.log("Loaded offline data from local storage.");
+            } catch (e) {
+                console.error("Failed to load local storage data", e);
+            }
+        }
+    }
+};
+
 // --- DATABASE OPERATIONS ---
 
 const COLLECTIONS = {
@@ -189,13 +223,17 @@ const checkDb = (): boolean => {
 const getMockData = (collectionName: string) => {
     switch (collectionName) {
         case COLLECTIONS.CLIENTS: return SEED_CLIENTS;
-        case COLLECTIONS.DOCUMENTS: return SEED_DOCS;
+        case COLLECTIONS.DOCUMENTS: 
+            // Sort Descending by Uploaded At to mimic Firestore OrderBy
+            return [...SEED_DOCS].sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime());
         case COLLECTIONS.STAFF: return SEED_STAFF;
         case COLLECTIONS.GL_ENTRIES: return SEED_GL;
         case COLLECTIONS.ASSETS: return SEED_ASSETS;
         case COLLECTIONS.RULES: return SEED_RULES;
         case COLLECTIONS.BANK_TXNS: return SEED_BANK;
-        case COLLECTIONS.LOGS: return SEED_LOGS;
+        case COLLECTIONS.LOGS: 
+            // Sort Descending by Timestamp to mimic Firestore OrderBy
+            return [...SEED_LOGS].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         default: return [];
     }
 };
@@ -229,7 +267,12 @@ async function fetchCollection<T>(collectionName: string, limitCount?: number): 
             console.warn(`Firestore read failed for ${collectionName}. Switching to Offline Mode.`);
         }
     }
-    return getMockData(collectionName) as unknown as T[];
+    // If we reach here, we are offline or fallback
+    let data = getMockData(collectionName) as unknown as T[];
+    if (limitCount && data.length > limitCount) {
+        data = data.slice(0, limitCount);
+    }
+    return data;
 }
 
 // Client-Specific Fetcher
@@ -253,8 +296,10 @@ async function fetchByClient<T>(collectionName: string, clientId: string): Promi
 
 // Seeder Function - CRITICAL for "Real Data" experience
 export const seedDatabase = async () => {
+    // If offline, try load from storage first to persist state across reloads
     if (!checkDb()) {
-        console.log("Skipping DB Seed: Offline Mode Active.");
+        loadFromStorage();
+        console.log("Skipping DB Seed: Offline Mode Active. Using Local Storage.");
         return;
     }
     try {
@@ -298,9 +343,14 @@ export const databaseService = {
     updateClient: async (client: Client) => {
         if (!checkDb()) {
             SEED_CLIENTS = SEED_CLIENTS.map(c => c.id === client.id ? client : c);
+            saveToStorage();
             return;
         }
-        try { await setDoc(doc(db, COLLECTIONS.CLIENTS, client.id), client); } catch(e) { console.warn("Write failed (Offline)", e); SEED_CLIENTS = SEED_CLIENTS.map(c => c.id === client.id ? client : c); }
+        try { await setDoc(doc(db, COLLECTIONS.CLIENTS, client.id), client); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_CLIENTS = SEED_CLIENTS.map(c => c.id === client.id ? client : c); 
+            saveToStorage();
+        }
     },
 
     // Documents
@@ -308,16 +358,26 @@ export const databaseService = {
     addDocument: async (docData: DocumentRecord) => {
         if (!checkDb()) {
             SEED_DOCS = [docData, ...SEED_DOCS];
+            saveToStorage();
             return;
         }
-        try { await setDoc(doc(db, COLLECTIONS.DOCUMENTS, docData.id), docData); } catch(e) { console.warn("Write failed (Offline)", e); SEED_DOCS = [docData, ...SEED_DOCS]; }
+        try { await setDoc(doc(db, COLLECTIONS.DOCUMENTS, docData.id), docData); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_DOCS = [docData, ...SEED_DOCS]; 
+            saveToStorage();
+        }
     },
     updateDocument: async (docData: DocumentRecord) => {
         if (!checkDb()) {
             SEED_DOCS = SEED_DOCS.map(d => d.id === docData.id ? docData : d);
+            saveToStorage();
             return;
         }
-        try { await setDoc(doc(db, COLLECTIONS.DOCUMENTS, docData.id), docData); } catch(e) { console.warn("Write failed (Offline)", e); SEED_DOCS = SEED_DOCS.map(d => d.id === docData.id ? docData : d); }
+        try { await setDoc(doc(db, COLLECTIONS.DOCUMENTS, docData.id), docData); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_DOCS = SEED_DOCS.map(d => d.id === docData.id ? docData : d); 
+            saveToStorage();
+        }
     },
 
     // Staff
@@ -325,9 +385,14 @@ export const databaseService = {
     updateStaff: async (staff: Staff) => {
         if (!checkDb()) {
             SEED_STAFF = SEED_STAFF.map(s => s.id === staff.id ? staff : s);
+            saveToStorage();
             return;
         }
-        try { await setDoc(doc(db, COLLECTIONS.STAFF, staff.id), staff); } catch(e) { console.warn("Write failed (Offline)", e); }
+        try { await setDoc(doc(db, COLLECTIONS.STAFF, staff.id), staff); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_STAFF = SEED_STAFF.map(s => s.id === staff.id ? staff : s);
+            saveToStorage();
+        }
     },
 
     // GL Entries
@@ -336,9 +401,14 @@ export const databaseService = {
     addGLEntry: async (entry: PostedGLEntry) => {
         if (!checkDb()) {
             SEED_GL = [...SEED_GL, entry];
+            saveToStorage();
             return;
         }
-        try { await setDoc(doc(db, COLLECTIONS.GL_ENTRIES, entry.id), entry); } catch(e) { console.warn("Write failed (Offline)", e); SEED_GL = [...SEED_GL, entry]; }
+        try { await setDoc(doc(db, COLLECTIONS.GL_ENTRIES, entry.id), entry); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_GL = [...SEED_GL, entry]; 
+            saveToStorage();
+        }
     },
 
     // Assets
@@ -347,9 +417,14 @@ export const databaseService = {
     addAsset: async (asset: FixedAsset) => {
         if (!checkDb()) {
             SEED_ASSETS = [...SEED_ASSETS, asset];
+            saveToStorage();
             return;
         }
-        try { await setDoc(doc(db, COLLECTIONS.ASSETS, asset.id), asset); } catch(e) { console.warn("Write failed (Offline)", e); SEED_ASSETS = [...SEED_ASSETS, asset]; }
+        try { await setDoc(doc(db, COLLECTIONS.ASSETS, asset.id), asset); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_ASSETS = [...SEED_ASSETS, asset]; 
+            saveToStorage();
+        }
     },
 
     // Rules
@@ -357,9 +432,14 @@ export const databaseService = {
     addRule: async (rule: VendorRule) => {
         if (!checkDb()) {
             SEED_RULES = [...SEED_RULES, rule];
+            saveToStorage();
             return;
         }
-        try { await setDoc(doc(db, COLLECTIONS.RULES, rule.id), rule); } catch(e) { console.warn("Write failed (Offline)", e); SEED_RULES = [...SEED_RULES, rule]; }
+        try { await setDoc(doc(db, COLLECTIONS.RULES, rule.id), rule); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_RULES = [...SEED_RULES, rule]; 
+            saveToStorage();
+        }
     },
 
     // Bank Transactions
@@ -368,9 +448,14 @@ export const databaseService = {
     updateBankTransaction: async (txn: BankTransaction) => {
         if (!checkDb()) {
             SEED_BANK = SEED_BANK.map(b => b.id === txn.id ? txn : b);
+            saveToStorage();
             return;
         }
-        try { await updateDoc(doc(db, COLLECTIONS.BANK_TXNS, txn.id), { status: txn.status, matched_doc_id: txn.matched_doc_id }); } catch(e) { console.warn("Write failed (Offline)", e); SEED_BANK = SEED_BANK.map(b => b.id === txn.id ? txn : b); }
+        try { await updateDoc(doc(db, COLLECTIONS.BANK_TXNS, txn.id), { status: txn.status, matched_doc_id: txn.matched_doc_id }); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_BANK = SEED_BANK.map(b => b.id === txn.id ? txn : b); 
+            saveToStorage();
+        }
     },
 
     // Activity Logs (Audit Trail)
@@ -378,8 +463,13 @@ export const databaseService = {
     addLog: async (log: ActivityLog) => {
         if (!checkDb()) {
             SEED_LOGS = [log, ...SEED_LOGS]; // Prepend for LIFO
+            saveToStorage();
             return;
         }
-        try { await setDoc(doc(db, COLLECTIONS.LOGS, log.id), log); } catch(e) { console.warn("Write failed (Offline)", e); SEED_LOGS = [log, ...SEED_LOGS]; }
+        try { await setDoc(doc(db, COLLECTIONS.LOGS, log.id), log); } catch(e) { 
+            console.warn("Write failed (Offline)", e); 
+            SEED_LOGS = [log, ...SEED_LOGS]; 
+            saveToStorage();
+        }
     }
 };
