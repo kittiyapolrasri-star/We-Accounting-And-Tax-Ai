@@ -1,5 +1,5 @@
 
-import { initializeApp } from "firebase/app";
+import { initializeApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
 
 // Configuration for Google Cloud Firestore
@@ -21,8 +21,8 @@ export const isFirebaseConfigured = !!(
   firebaseConfig.projectId.length > 0
 );
 
-let app;
-let db: Firestore;
+let app: FirebaseApp | undefined;
+let db: Firestore | undefined;
 
 if (isFirebaseConfigured) {
   try {
