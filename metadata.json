@@ -1,0 +1,5 @@
+{
+  "name": "We Accounting And Tax Ai",
+  "description": "Automated accounting engine adhering to Thai Accounting Standards (TAS) and Revenue Code. Extracts audit-ready journal entries from document images.",
+  "requestFramePermissions": []
+}
