@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isManager() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role in ['admin', 'manager'];
+    }
+
+    function isAssignedToClient(clientId) {
+      let staffDoc = get(/databases/$(database)/documents/staff/$(request.auth.uid));
+      return staffDoc.data.assigned_clients.hasAny([clientId]) || isManager();
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Staff collection - only admins can create/delete, users can read their own
+    match /staff/{staffId} {
+      allow read: if isAuthenticated() && (isOwner(staffId) || isManager());
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isOwner(staffId);
+      allow delete: if isAdmin();
+    }
+
+    // Clients collection - managers can CRUD, accountants can read assigned
+    match /clients/{clientId} {
+      allow read: if isAuthenticated() && isAssignedToClient(clientId);
+      allow create, update: if isManager();
+      allow delete: if isAdmin();
+    }
+
+    // Documents collection - based on client assignment
+    match /documents/{docId} {
+      allow read: if isAuthenticated() &&
+        (isManager() || isAssignedToClient(resource.data.client_id));
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+        (isManager() || isAssignedToClient(resource.data.client_id));
+      allow delete: if isManager();
+    }
+
+    // GL Entries - based on client assignment
+    match /gl_entries/{entryId} {
+      allow read: if isAuthenticated() &&
+        (isManager() || isAssignedToClient(resource.data.clientId));
+      allow create, update: if isAuthenticated() &&
+        (isManager() || isAssignedToClient(request.resource.data.clientId));
+      allow delete: if isAdmin();
+    }
+
+    // Fixed Assets - based on client assignment
+    match /assets/{assetId} {
+      allow read: if isAuthenticated() &&
+        (isManager() || isAssignedToClient(resource.data.clientId));
+      allow create, update: if isAuthenticated() &&
+        (isManager() || isAssignedToClient(request.resource.data.clientId));
+      allow delete: if isManager();
+    }
+
+    // Bank Transactions - based on client assignment
+    match /bank_transactions/{txnId} {
+      allow read: if isAuthenticated() &&
+        (isManager() || isAssignedToClient(resource.data.clientId));
+      allow create, update: if isAuthenticated() &&
+        (isManager() || isAssignedToClient(request.resource.data.clientId));
+      allow delete: if isManager();
+    }
+
+    // Vendor Rules - managers can manage
+    match /vendor_rules/{ruleId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isManager();
+    }
+
+    // Activity Logs - read only for authenticated users
+    match /activity_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Logs are immutable
+    }
+
+    // User settings - users can manage their own
+    match /user_settings/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}
