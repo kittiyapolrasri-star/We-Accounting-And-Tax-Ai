@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { PostedGLEntry, Client } from '../types';
-import { FileText, Download, Printer, BookOpen, Signature, Edit3, Save } from 'lucide-react';
+import { FileText, Download, Printer, BookOpen, PenTool, Edit3, Save } from 'lucide-react';
 
 interface Props {
   client: Client;
