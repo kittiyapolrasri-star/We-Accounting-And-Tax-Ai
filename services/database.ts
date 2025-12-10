@@ -16,14 +16,15 @@ import {
 import { db, isFirebaseConfigured } from "./firebase";
 import { Client, DocumentRecord, Staff, PostedGLEntry, FixedAsset, VendorRule, BankTransaction, ActivityLog } from '../types';
 
-// --- SEED DATA (In-Memory Fallback Store) ---
-const SEED_STAFF: Staff[] = [
+// --- SEED DATA (In-Memory Fallback & Initial Real DB Population) ---
+
+let SEED_STAFF: Staff[] = [
   { id: 'S001', name: 'Somsri Account', role: 'Manager', email: 'somsri@weaccounting.co.th', active_tasks: 12 },
   { id: 'S002', name: 'John Ledger', role: 'Senior Accountant', email: 'john@weaccounting.co.th', active_tasks: 8 },
   { id: 'S003', name: 'Nida Tax', role: 'Junior Accountant', email: 'nida@weaccounting.co.th', active_tasks: 3 },
 ];
 
-const SEED_CLIENTS: Client[] = [
+let SEED_CLIENTS: Client[] = [
   { 
       id: 'C001', name: 'Tech Solutions Co., Ltd.', tax_id: '0105560001234', industry: 'Software House', contact_person: 'Khun Somchai', status: 'Active', 
       assigned_staff_id: 'S002', last_closing_date: '31 Jan 2024',
@@ -58,7 +59,7 @@ const SEED_CLIENTS: Client[] = [
   }
 ];
 
-const SEED_RULES: VendorRule[] = [
+let SEED_RULES: VendorRule[] = [
     { id: 'R001', vendorNameKeyword: '7-Eleven', accountCode: '52990', accountName: 'ค่าใช้จ่ายเบ็ดเตล็ด (Misc Expense)', vatType: 'NON_CLAIMABLE' },
     { id: 'R002', vendorNameKeyword: 'Grab', accountCode: '52300', accountName: 'ค่าพาหนะ (Transportation)', vatType: 'EXEMPT' },
     { id: 'R003', vendorNameKeyword: 'True', accountCode: '52400', accountName: 'ค่าโทรศัพท์และอินเทอร์เน็ต', vatType: 'CLAIMABLE' },
@@ -66,7 +67,7 @@ const SEED_RULES: VendorRule[] = [
     { id: 'R005', vendorNameKeyword: 'Google', accountCode: '52400', accountName: 'ค่าบริการซอฟต์แวร์ (Software Sub)', vatType: 'CLAIMABLE' },
 ];
 
-const SEED_GL: PostedGLEntry[] = [
+let SEED_GL: PostedGLEntry[] = [
     // Opening Balance
     { id: 'GL000', clientId: 'C001', date: '2024-01-01', doc_no: 'OP-001', description: 'ยอดยกมา (Opening Balance)', account_code: '11120', account_name: 'เงินฝากธนาคาร (Bank Deposit)', debit: 1250000, credit: 0 },
     { id: 'GL000-2', clientId: 'C001', date: '2024-01-01', doc_no: 'OP-001', description: 'ยอดยกมา (Opening Balance)', account_code: '31000', account_name: 'ทุนจดทะเบียน (Share Capital)', debit: 0, credit: 1000000 },
@@ -83,7 +84,7 @@ const SEED_GL: PostedGLEntry[] = [
     { id: 'GL003', clientId: 'C001', date: '2024-02-01', doc_no: 'INV-RENT-001', description: 'ค่าเช่าออฟฟิศ ก.พ. 67', account_code: '21400', account_name: 'ภาษีหัก ณ ที่จ่ายค้างจ่าย (WHT Payable)', debit: 0, credit: 1250 },
 ];
 
-const SEED_ASSETS: FixedAsset[] = [
+let SEED_ASSETS: FixedAsset[] = [
     {
         id: 'FA001', clientId: 'C001', asset_code: '12400-001', name: 'MacBook Pro M3 (Design)', category: 'Equipment',
         acquisition_date: '2024-01-15', cost: 85000, residual_value: 1, useful_life_years: 3,
@@ -96,7 +97,7 @@ const SEED_ASSETS: FixedAsset[] = [
     },
 ];
 
-const SEED_BANK: BankTransaction[] = [
+let SEED_BANK: BankTransaction[] = [
   { id: 'B001', clientId: 'C001', date: '2024-02-14', description: 'TRF TO TRUE CORP PUBLIC', amount: -15430.00, status: 'unmatched' },
   { id: 'B002', clientId: 'C001', date: '2024-02-12', description: 'POS 9988 OFFICEMATE', amount: -2500.00, status: 'unmatched' },
   { id: 'B003', clientId: 'C001', date: '2024-02-15', description: 'SALES DEPOSIT 8899', amount: 45000.00, status: 'unmatched' },
@@ -104,7 +105,7 @@ const SEED_BANK: BankTransaction[] = [
   { id: 'B005', clientId: 'C001', date: '2024-02-28', description: 'INTEREST RECEIVED', amount: 125.50, status: 'unmatched' },
 ];
 
-const SEED_DOCS: DocumentRecord[] = [
+let SEED_DOCS: DocumentRecord[] = [
     { 
       id: 'D001', 
       uploaded_at: '2024-02-14T10:30:00Z', 
@@ -156,7 +157,7 @@ const SEED_DOCS: DocumentRecord[] = [
     },
 ];
 
-const SEED_LOGS: ActivityLog[] = [
+let SEED_LOGS: ActivityLog[] = [
     { id: 'L001', timestamp: new Date(Date.now() - 3600000).toISOString(), user_id: 'S002', user_name: 'John Ledger', action: 'LOGIN', details: 'System Login successful', status: 'success' },
     { id: 'L002', timestamp: new Date(Date.now() - 3000000).toISOString(), user_id: 'S002', user_name: 'John Ledger', action: 'UPLOAD', details: 'Uploaded 5 documents for Tech Solutions', status: 'success' },
     { id: 'L003', timestamp: new Date(Date.now() - 1500000).toISOString(), user_id: 'S002', user_name: 'John Ledger', action: 'APPROVE', details: 'Approved INV-2024-001 (True Corp)', status: 'success' },
@@ -217,8 +218,11 @@ async function fetchCollection<T>(collectionName: string, limitCount?: number): 
                 data.push(doc.data() as T);
             });
             
-            if (data.length === 0) {
-                return getMockData(collectionName) as unknown as T[];
+            // If connected but empty, return empty (don't fallback to mock if real DB is active but just empty)
+            if (data.length === 0 && (collectionName === COLLECTIONS.CLIENTS || collectionName === COLLECTIONS.STAFF)) {
+                 // Exception: If critical master data is missing, we allow empty return here, 
+                 // because seedDatabase will handle population.
+                 return [];
             }
             return data;
         } catch (error) {
@@ -238,11 +242,6 @@ async function fetchByClient<T>(collectionName: string, clientId: string): Promi
             querySnapshot.forEach((doc) => {
                 data.push(doc.data() as T);
             });
-            
-            if (data.length === 0) {
-                 const allMock = getMockData(collectionName) as any[];
-                 return allMock.filter(item => item.clientId === clientId) as unknown as T[];
-            }
             return data;
         } catch (error) {
             console.warn(`Firestore client fetch failed. Using Offline Mode.`);
@@ -252,7 +251,7 @@ async function fetchByClient<T>(collectionName: string, clientId: string): Promi
     return allMock.filter(item => item.clientId === clientId) as unknown as T[];
 }
 
-// Seeder Function
+// Seeder Function - CRITICAL for "Real Data" experience
 export const seedDatabase = async () => {
     if (!checkDb()) {
         console.log("Skipping DB Seed: Offline Mode Active.");
@@ -261,53 +260,73 @@ export const seedDatabase = async () => {
     try {
         const clientsRef = collection(db, COLLECTIONS.CLIENTS);
         const clientsSnapshot = await getDocs(query(clientsRef, limit(1)));
+        
+        // Only seed if empty
         if (!clientsSnapshot.empty) return; 
 
-        console.log("Seeding Firestore...");
+        console.log("Seeding Firestore with Initial Real-World Data...");
         const batch = writeBatch(db);
 
-        SEED_CLIENTS.forEach(c => batch.set(doc(db, COLLECTIONS.CLIENTS, c.id), c));
-        SEED_STAFF.forEach(s => batch.set(doc(db, COLLECTIONS.STAFF, s.id), s));
-        SEED_DOCS.forEach(d => batch.set(doc(db, COLLECTIONS.DOCUMENTS, d.id), d));
-        SEED_GL.forEach(g => batch.set(doc(db, COLLECTIONS.GL_ENTRIES, g.id), g));
-        SEED_ASSETS.forEach(a => batch.set(doc(db, COLLECTIONS.ASSETS, a.id), a));
-        SEED_RULES.forEach(r => batch.set(doc(db, COLLECTIONS.RULES, r.id), r));
-        SEED_BANK.forEach(b => batch.set(doc(db, COLLECTIONS.BANK_TXNS, b.id), b));
-        SEED_LOGS.forEach(l => batch.set(doc(db, COLLECTIONS.LOGS, l.id), l));
+        // Helper to safely add doc
+        const safeSet = (col: string, id: string, data: any) => {
+            const ref = doc(db, col, id);
+            batch.set(ref, data);
+        };
+
+        SEED_CLIENTS.forEach(c => safeSet(COLLECTIONS.CLIENTS, c.id, c));
+        SEED_STAFF.forEach(s => safeSet(COLLECTIONS.STAFF, s.id, s));
+        SEED_DOCS.forEach(d => safeSet(COLLECTIONS.DOCUMENTS, d.id, d));
+        SEED_GL.forEach(g => safeSet(COLLECTIONS.GL_ENTRIES, g.id, g));
+        SEED_ASSETS.forEach(a => safeSet(COLLECTIONS.ASSETS, a.id, a));
+        SEED_RULES.forEach(r => safeSet(COLLECTIONS.RULES, r.id, r));
+        SEED_BANK.forEach(b => safeSet(COLLECTIONS.BANK_TXNS, b.id, b));
+        SEED_LOGS.forEach(l => safeSet(COLLECTIONS.LOGS, l.id, l));
 
         await batch.commit();
-        console.log("Seeding Complete.");
+        console.log("Database Seeding Complete.");
     } catch (e) {
         console.error("Seeding failed (non-critical):", e);
     }
 };
 
-// WRITE OPERATIONS - With Safe Fallback
+// WRITE OPERATIONS - With In-Memory Persistence fallback for Offline Demo
 export const databaseService = {
     seed: seedDatabase,
 
     // Clients
     getClients: () => fetchCollection<Client>(COLLECTIONS.CLIENTS),
     updateClient: async (client: Client) => {
-        if (!checkDb()) return;
-        try { await setDoc(doc(db, COLLECTIONS.CLIENTS, client.id), client); } catch(e) { console.warn("Write failed (Offline)", e); }
+        if (!checkDb()) {
+            SEED_CLIENTS = SEED_CLIENTS.map(c => c.id === client.id ? client : c);
+            return;
+        }
+        try { await setDoc(doc(db, COLLECTIONS.CLIENTS, client.id), client); } catch(e) { console.warn("Write failed (Offline)", e); SEED_CLIENTS = SEED_CLIENTS.map(c => c.id === client.id ? client : c); }
     },
 
     // Documents
     getDocuments: (limitCount: number = 50) => fetchCollection<DocumentRecord>(COLLECTIONS.DOCUMENTS, limitCount),
     addDocument: async (docData: DocumentRecord) => {
-        if (!checkDb()) return;
-        try { await setDoc(doc(db, COLLECTIONS.DOCUMENTS, docData.id), docData); } catch(e) { console.warn("Write failed (Offline)", e); }
+        if (!checkDb()) {
+            SEED_DOCS = [docData, ...SEED_DOCS];
+            return;
+        }
+        try { await setDoc(doc(db, COLLECTIONS.DOCUMENTS, docData.id), docData); } catch(e) { console.warn("Write failed (Offline)", e); SEED_DOCS = [docData, ...SEED_DOCS]; }
     },
     updateDocument: async (docData: DocumentRecord) => {
-        if (!checkDb()) return;
-        try { await setDoc(doc(db, COLLECTIONS.DOCUMENTS, docData.id), docData); } catch(e) { console.warn("Write failed (Offline)", e); }
+        if (!checkDb()) {
+            SEED_DOCS = SEED_DOCS.map(d => d.id === docData.id ? docData : d);
+            return;
+        }
+        try { await setDoc(doc(db, COLLECTIONS.DOCUMENTS, docData.id), docData); } catch(e) { console.warn("Write failed (Offline)", e); SEED_DOCS = SEED_DOCS.map(d => d.id === docData.id ? docData : d); }
     },
 
     // Staff
     getStaff: () => fetchCollection<Staff>(COLLECTIONS.STAFF),
     updateStaff: async (staff: Staff) => {
-        if (!checkDb()) return;
+        if (!checkDb()) {
+            SEED_STAFF = SEED_STAFF.map(s => s.id === staff.id ? staff : s);
+            return;
+        }
         try { await setDoc(doc(db, COLLECTIONS.STAFF, staff.id), staff); } catch(e) { console.warn("Write failed (Offline)", e); }
     },
 
@@ -315,37 +334,52 @@ export const databaseService = {
     getGLEntries: (limitCount: number = 200) => fetchCollection<PostedGLEntry>(COLLECTIONS.GL_ENTRIES, limitCount), 
     getGLEntriesByClient: (clientId: string) => fetchByClient<PostedGLEntry>(COLLECTIONS.GL_ENTRIES, clientId),
     addGLEntry: async (entry: PostedGLEntry) => {
-        if (!checkDb()) return;
-        try { await setDoc(doc(db, COLLECTIONS.GL_ENTRIES, entry.id), entry); } catch(e) { console.warn("Write failed (Offline)", e); }
+        if (!checkDb()) {
+            SEED_GL = [...SEED_GL, entry];
+            return;
+        }
+        try { await setDoc(doc(db, COLLECTIONS.GL_ENTRIES, entry.id), entry); } catch(e) { console.warn("Write failed (Offline)", e); SEED_GL = [...SEED_GL, entry]; }
     },
 
     // Assets
     getAssets: () => fetchCollection<FixedAsset>(COLLECTIONS.ASSETS),
     getAssetsByClient: (clientId: string) => fetchByClient<FixedAsset>(COLLECTIONS.ASSETS, clientId),
     addAsset: async (asset: FixedAsset) => {
-        if (!checkDb()) return;
-        try { await setDoc(doc(db, COLLECTIONS.ASSETS, asset.id), asset); } catch(e) { console.warn("Write failed (Offline)", e); }
+        if (!checkDb()) {
+            SEED_ASSETS = [...SEED_ASSETS, asset];
+            return;
+        }
+        try { await setDoc(doc(db, COLLECTIONS.ASSETS, asset.id), asset); } catch(e) { console.warn("Write failed (Offline)", e); SEED_ASSETS = [...SEED_ASSETS, asset]; }
     },
 
     // Rules
     getRules: () => fetchCollection<VendorRule>(COLLECTIONS.RULES),
     addRule: async (rule: VendorRule) => {
-        if (!checkDb()) return;
-        try { await setDoc(doc(db, COLLECTIONS.RULES, rule.id), rule); } catch(e) { console.warn("Write failed (Offline)", e); }
+        if (!checkDb()) {
+            SEED_RULES = [...SEED_RULES, rule];
+            return;
+        }
+        try { await setDoc(doc(db, COLLECTIONS.RULES, rule.id), rule); } catch(e) { console.warn("Write failed (Offline)", e); SEED_RULES = [...SEED_RULES, rule]; }
     },
 
     // Bank Transactions
     getBankTransactions: () => fetchCollection<BankTransaction>(COLLECTIONS.BANK_TXNS),
     getBankTransactionsByClient: (clientId: string) => fetchByClient<BankTransaction>(COLLECTIONS.BANK_TXNS, clientId),
     updateBankTransaction: async (txn: BankTransaction) => {
-        if (!checkDb()) return;
-        try { await updateDoc(doc(db, COLLECTIONS.BANK_TXNS, txn.id), { status: txn.status, matched_doc_id: txn.matched_doc_id }); } catch(e) { console.warn("Write failed (Offline)", e); }
+        if (!checkDb()) {
+            SEED_BANK = SEED_BANK.map(b => b.id === txn.id ? txn : b);
+            return;
+        }
+        try { await updateDoc(doc(db, COLLECTIONS.BANK_TXNS, txn.id), { status: txn.status, matched_doc_id: txn.matched_doc_id }); } catch(e) { console.warn("Write failed (Offline)", e); SEED_BANK = SEED_BANK.map(b => b.id === txn.id ? txn : b); }
     },
 
     // Activity Logs (Audit Trail)
     getLogs: (limitCount: number = 20) => fetchCollection<ActivityLog>(COLLECTIONS.LOGS, limitCount),
     addLog: async (log: ActivityLog) => {
-        if (!checkDb()) return;
-        try { await setDoc(doc(db, COLLECTIONS.LOGS, log.id), log); } catch(e) { console.warn("Write failed (Offline)", e); }
+        if (!checkDb()) {
+            SEED_LOGS = [log, ...SEED_LOGS]; // Prepend for LIFO
+            return;
+        }
+        try { await setDoc(doc(db, COLLECTIONS.LOGS, log.id), log); } catch(e) { console.warn("Write failed (Offline)", e); SEED_LOGS = [log, ...SEED_LOGS]; }
     }
 };
