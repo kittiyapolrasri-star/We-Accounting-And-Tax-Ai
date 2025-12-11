@@ -21,6 +21,7 @@ import ClientDetail from './components/ClientDetail';
 import ClientPortal from './components/ClientPortal';
 import PayrollManagement from './components/PayrollManagement';
 import MasterData from './components/MasterData';
+import CashFlowStatement from './components/CashFlowStatement';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Main App Content (requires authentication)
@@ -755,6 +756,8 @@ const AppContent: React.FC = () => {
             return <MasterData clients={clients} />;
         case 'payroll':
             return <PayrollManagement clients={clients} onPostJournal={handlePostJournalEntry} />;
+        case 'cash-flow':
+            return <CashFlowStatement clients={clients} glEntries={glEntries} />;
         case 'reports':
             // SYSTEMATIC: Pass GL entries to global reporting view
             return <TaxReporting

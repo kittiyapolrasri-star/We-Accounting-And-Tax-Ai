@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Users, Settings, PlusCircle, PieChart, Building, FilePlus, BarChart3, ChevronRight, Scale, Briefcase, Globe, DollarSign, Database } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, PlusCircle, PieChart, Building, FilePlus, BarChart3, ChevronRight, Scale, Briefcase, Globe, DollarSign, Database, RefreshCw } from 'lucide-react';
 
 interface Props {
   activeView: string;
@@ -24,6 +24,7 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView }) => {
     { id: 'clients', label: 'ทะเบียนลูกค้า', subLabel: 'Clients', icon: Building },
     { id: 'master-data', label: 'ข้อมูลหลัก', subLabel: 'Master Data', icon: Database },
     { id: 'payroll', label: 'เงินเดือน', subLabel: 'Payroll', icon: DollarSign },
+    { id: 'cash-flow', label: 'งบกระแสเงินสด', subLabel: 'Cash Flow', icon: RefreshCw },
     { id: 'reports', label: 'รายงานภาษี & ปิดงบ', subLabel: 'Tax Reports', icon: PieChart },
     { id: 'staff', label: 'ทีมงาน', subLabel: 'Staff', icon: Users },
   ];
