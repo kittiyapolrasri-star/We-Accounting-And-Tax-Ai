@@ -95,5 +95,17 @@ service cloud.firestore {
     match /user_settings/{userId} {
       allow read, write: if isOwner(userId);
     }
+
+    // Daily reports - managers can read, only server (Cloud Functions) can write
+    match /daily_reports/{reportId} {
+      allow read: if isManager();
+      allow write: if false; // Only Cloud Functions can write
+    }
+
+    // Activity logs archive - managers can read, only server can write
+    match /activity_logs_archive/{logId} {
+      allow read: if isManager();
+      allow write: if false; // Only Cloud Functions can write
+    }
   }
 }

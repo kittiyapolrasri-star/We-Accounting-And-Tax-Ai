@@ -1,40 +1,46 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Loader2, AlertCircle, FileStack, ArrowRight, CheckCircle2, WifiOff, RefreshCcw, Database } from 'lucide-react';
+import { Upload, Loader2, AlertCircle, FileStack, ArrowRight, CheckCircle2, WifiOff, RefreshCcw, Database, LogOut, User } from 'lucide-react';
 import { analyzeDocument } from './services/geminiService';
 import { databaseService } from './services/database';
 import { isFirebaseConfigured } from './services/firebase';
+import { useAuth, AuthProvider } from './contexts/AuthContext';
+import Login from './components/Login';
 import { AnalysisState, DocumentRecord, Staff, AccountingResponse, Client, IssueTicket, VendorRule, PostedGLEntry, PublishedReport, FixedAsset, WorkflowStatus, ActivityLog } from './types';
 import AnalysisResult from './components/AnalysisResult';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import StaffManagement from './components/StaffManagement';
-import SmartDocumentArchive from './components/SmartDocumentArchive'; 
+import SmartDocumentArchive from './components/SmartDocumentArchive';
 import ClientDirectory from './components/ClientDirectory';
 import TaxReporting from './components/TaxReporting';
 import MasterCommandCenter from './components/MasterCommandCenter';
-import BankReconciliation from './components/BankReconciliation'; 
+import BankReconciliation from './components/BankReconciliation';
 import StaffWorkplace from './components/StaffWorkplace';
-import ClientDetail from './components/ClientDetail'; 
+import ClientDetail from './components/ClientDetail';
 import ClientPortal from './components/ClientPortal';
+import ErrorBoundary from './components/ErrorBoundary';
 
-const App: React.FC = () => {
+// Main App Content (requires authentication)
+const AppContent: React.FC = () => {
+  const { user, signOut, isAuthenticated, loading: authLoading } = useAuth();
+
   // --- STATE INITIALIZATION ---
   const [currentView, setCurrentView] = useState('dashboard');
-  
+
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [vendorRules, setVendorRules] = useState<VendorRule[]>([]);
-  
+
   // SYSTEMATIC: Load GL globally for Reporting
   const [glEntries, setGlEntries] = useState<PostedGLEntry[]>([]);
   const [fixedAssets, setFixedAssets] = useState<FixedAsset[]>([]);
-  
+
   const [loadingApp, setLoadingApp] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [notification, setNotification] = useState<{message: string, type: 'success'|'error'} | null>(null);
-  
+
   // Specific View States
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [reviewDocId, setReviewDocId] = useState<string | null>(null);
@@ -43,9 +49,9 @@ const App: React.FC = () => {
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // MOCK LOGGED IN USER
-  const CURRENT_USER_ID = 'S002'; // John Ledger (Senior Accountant)
-  const CURRENT_USER_NAME = 'John Ledger';
+  // Get current user info from auth context
+  const CURRENT_USER_ID = user?.staffId || 'unknown';
+  const CURRENT_USER_NAME = user?.displayName || 'Unknown User';
 
   // --- HELPER: SYSTEM LOGGING ---
   const logAction = async (action: ActivityLog['action'], details: string, status: 'success' | 'error' = 'success') => {
@@ -65,7 +71,7 @@ const App: React.FC = () => {
   // --- INITIAL DATA LOAD ---
   const initSystem = async () => {
       setLoadingApp(true);
-      
+
       // Determine mode
       if (!isFirebaseConfigured) {
           console.log("App running in Offline/Demo Mode (Missing Config)");
@@ -75,16 +81,16 @@ const App: React.FC = () => {
       try {
         // Initialize Database (Seed if needed or Load from LocalStorage)
         await databaseService.seed();
-        
+
         // Parallel Fetch for Speed
         const [docs, stf, cli, rules, gl] = await Promise.all([
-            databaseService.getDocuments(50), 
+            databaseService.getDocuments(50),
             databaseService.getStaff(),
             databaseService.getClients(),
             databaseService.getRules(),
             databaseService.getGLEntries(500) // Fetch GL for global reports
         ]);
-        
+
         setDocuments(docs);
         setStaff(stf);
         setClients(cli);
@@ -100,14 +106,28 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-      initSystem();
-  }, []);
+      if (isAuthenticated) {
+        initSystem();
+        logAction('LOGIN', `User ${CURRENT_USER_NAME} logged in`);
+      }
+  }, [isAuthenticated]);
 
   // --- ACTIONS ---
 
   const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
       setNotification({ message: msg, type });
       setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await logAction('LOGIN', `User ${CURRENT_USER_NAME} logged out`);
+      await signOut();
+      setCurrentView('dashboard');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      showNotification('เกิดข้อผิดพลาดในการออกจากระบบ', 'error');
+    }
   };
 
   const resolveRelatedIssues = async (docId: string) => {
@@ -129,7 +149,7 @@ const App: React.FC = () => {
           }
           return client;
       });
-      
+
       if (issuesResolvedCount > 0) {
           setClients(updatedClients);
           console.log(`Auto-resolved ${issuesResolvedCount} issues related to ${docId}`);
@@ -140,14 +160,14 @@ const App: React.FC = () => {
   const handlePostJournalEntry = async (entries: PostedGLEntry[]) => {
       // 1. Save GL to Local State (Critical for immediate UI update)
       setGlEntries(prev => [...prev, ...entries]);
-      
+
       // Persist each with Client ID
       const clientId = selectedClientId || 'C001'; // Fallback
-      
+
       for(const entry of entries) {
           await databaseService.addGLEntry({ ...entry, clientId });
       }
-      
+
       // 2. Auto-Detect Fixed Assets
       const newAssets: FixedAsset[] = [];
       entries.forEach(entry => {
@@ -155,7 +175,7 @@ const App: React.FC = () => {
               // Trigger auto creation of asset draft
               const newAsset: FixedAsset = {
                   id: `FA-AUTO-${Date.now()}-${Math.random()}`,
-                  clientId: clientId, 
+                  clientId: clientId,
                   asset_code: `${entry.account_code}-${Date.now().toString().slice(-3)}`,
                   name: entry.description,
                   category: 'Equipment', // Default
@@ -186,7 +206,7 @@ const App: React.FC = () => {
   // Handler to update Client Workflow (Status)
   const handleUpdateClientStatus = async (status: Partial<Client['current_workflow']>) => {
       if (!selectedClientId) return;
-      
+
       const updatedClients = clients.map(c => {
           if (c.id === selectedClientId) {
               const updatedClient = {
@@ -247,7 +267,7 @@ const App: React.FC = () => {
       const docsToApprove = documents.filter(d => docIds.includes(d.id));
       const newGLEntries: PostedGLEntry[] = [];
       const approvedIds: string[] = [];
-      
+
       docsToApprove.forEach(doc => {
           if (doc.status !== 'approved' && doc.ai_data) {
               const client = clients.find(c => c.name === doc.client_name);
@@ -279,20 +299,20 @@ const App: React.FC = () => {
              await databaseService.addGLEntry(entry);
           }
           setGlEntries(prev => [...prev, ...newGLEntries]); // Update local state if needed
-          
+
           // Update Docs Status
           const updatedDocs = documents.map(d => approvedIds.includes(d.id) ? { ...d, status: 'approved' as const } : d);
           setDocuments(updatedDocs);
-          
+
           // Persist Doc Updates
           for(const d of updatedDocs.filter(doc => approvedIds.includes(doc.id))) {
               await databaseService.updateDocument(d);
           }
-          
+
           // Resolve Issues
           approvedIds.forEach(id => resolveRelatedIssues(id));
           showNotification(`Approved & Posted ${approvedIds.length} documents.`, 'success');
-          
+
           await logAction('APPROVE', `Batch approved ${approvedIds.length} documents.`);
       } else {
           showNotification('No eligible documents to approve.', 'error');
@@ -346,7 +366,7 @@ const App: React.FC = () => {
     setDocuments(updatedDocs);
     const savedDoc = updatedDocs.find(d => d.id === reviewDocId);
     if(savedDoc) await databaseService.updateDocument(savedDoc);
-    
+
     // 3. Resolve Issues
     resolveRelatedIssues(reviewDocId);
 
@@ -384,10 +404,10 @@ const App: React.FC = () => {
 
       if (rule) {
           console.log(`[Automation Engine] Applied rule for ${rule.vendorNameKeyword}`);
-          
+
           // Clone data
           const newData = JSON.parse(JSON.stringify(aiResult));
-          
+
           // Update Journal Lines
           newData.accounting_entry.journal_lines = newData.accounting_entry.journal_lines.map((line: any) => {
               if (line.account_side === 'DEBIT') {
@@ -434,9 +454,9 @@ const App: React.FC = () => {
     setDocuments(prev => [initialDoc, ...prev]);
 
     try {
-        // 1. Analyze with Gemini
+        // 1. Analyze with Gemini via Cloud Functions (secure)
         const rawResult = await analyzeDocument(file);
-        
+
         // 2. Post-Process with Automation Engine
         const refinedResult = applyVendorRules(rawResult);
 
@@ -456,12 +476,13 @@ const App: React.FC = () => {
 
         // Update State (Replace Temp with Final)
         setDocuments(currentDocs => currentDocs.map(d => d.id === tempId ? finalizedDoc : d));
-        
+
         await logAction('UPLOAD', `Successfully processed file: ${file.name}`);
 
     } catch (error) {
         console.error("Processing failed", error);
         setDocuments(currentDocs => currentDocs.map(d => d.id === tempId ? { ...d, status: 'rejected' as const, client_name: 'Error' } : d));
+        showNotification(`ประมวลผลไฟล์ ${file.name} ไม่สำเร็จ`, 'error');
     }
     setUploadQueue(prev => prev.filter(f => f !== file));
   };
@@ -536,18 +557,18 @@ const App: React.FC = () => {
             header_data: { doc_type: 'Journal Voucher (JV)', issue_date: new Date().toISOString().split('T')[0], inv_number: 'JV-NEW', currency: 'THB' },
             parties: { client_company: { name: 'Tech Solutions Co., Ltd.', tax_id: '0105560001234' }, counterparty: { name: '-', tax_id: '' } },
             financials: { subtotal: 0, discount: 0, vat_rate: 7, vat_amount: 0, grand_total: 0, wht_amount: 0 },
-            accounting_entry: { 
-                transaction_description: 'รายการปรับปรุง (Adjustments)', 
-                account_class: 'General Journal', 
+            accounting_entry: {
+                transaction_description: 'รายการปรับปรุง (Adjustments)',
+                account_class: 'General Journal',
                 journal_lines: [
                     { account_code: '', account_side: 'DEBIT', account_name_th: '', amount: 0 },
                     { account_code: '', account_side: 'CREDIT', account_name_th: '', amount: 0 }
-                ] 
+                ]
             },
             tax_compliance: { is_full_tax_invoice: false, vat_claimable: false, wht_flag: false }
         }
     };
-    
+
     setDocuments([manualDoc, ...documents]);
     await databaseService.addDocument(manualDoc);
     setReviewDocId(tempId);
@@ -577,8 +598,8 @@ const App: React.FC = () => {
         const docToReview = documents.find(d => d.id === reviewDocId);
         if (docToReview && docToReview.ai_data) {
             return (
-                <AnalysisResult 
-                    data={docToReview.ai_data} 
+                <AnalysisResult
+                    data={docToReview.ai_data}
                     staffList={staff}
                     // PASSING EXISTING DOCS FOR DUPLICATE CHECKS
                     existingDocuments={documents.filter(d => d.client_name === docToReview.client_name)}
@@ -615,22 +636,22 @@ const App: React.FC = () => {
                          <h2 className="text-3xl font-bold text-slate-800">ศูนย์นำเข้าเอกสาร (Upload Center)</h2>
                          <p className="text-slate-500">รองรับการอัปโหลดทีละหลายไฟล์ (Batch Processing Queue)</p>
                     </div>
-                     <button 
+                     <button
                         onClick={() => setCurrentView('documents')}
                         className="text-blue-600 hover:underline flex items-center gap-1 text-sm font-medium"
                     >
                         ไปที่คลังเอกสาร <ArrowRight size={16}/>
                     </button>
                 </div>
-                
+
                 <div className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-12 text-center hover:border-blue-500 hover:bg-blue-50/50 transition-all shadow-sm">
                     <input
                         type="file"
                         ref={fileInputRef}
                         onChange={handleFileChange}
-                        accept="image/png, image/jpeg, image/webp"
+                        accept="image/png, image/jpeg, image/webp, application/pdf"
                         className="hidden"
-                        multiple 
+                        multiple
                     />
                     <div className="flex flex-col items-center justify-center cursor-pointer" onClick={handleUploadClick}>
                         <div className="bg-blue-100 text-blue-600 p-5 rounded-full mb-4">
@@ -660,7 +681,7 @@ const App: React.FC = () => {
                                             <div>
                                                 <p className="text-sm font-medium text-slate-800">{d.filename}</p>
                                                 <p className="text-xs text-slate-500">
-                                                    <span className="font-semibold text-blue-600">Gemini 3 Pro</span> analyzing & applying vendor rules...
+                                                    <span className="font-semibold text-blue-600">Gemini AI</span> analyzing & applying vendor rules...
                                                 </p>
                                             </div>
                                         </div>
@@ -678,20 +699,20 @@ const App: React.FC = () => {
     if (currentView === 'client-detail' && selectedClientId) {
         const client = clients.find(c => c.id === selectedClientId);
         if (client) {
-            return <ClientDetail 
-                        client={client} 
-                        documents={documents} 
-                        staff={staff} 
+            return <ClientDetail
+                        client={client}
+                        documents={documents}
+                        staff={staff}
                         vendorRules={vendorRules}
                         // Important: Pass empty or specific GL/Assets if loaded in ClientDetail
                         // We will allow ClientDetail to fetch its own data for scalability
                         glEntries={[]} // Deprecated prop usage, ClientDetail will fetch
                         assets={[]} // Deprecated prop usage, ClientDetail will fetch
-                        
+
                         onUpdateRules={handleUpdateRules}
-                        onBack={() => setCurrentView('command-center')} 
+                        onBack={() => setCurrentView('command-center')}
                         onReviewDoc={handleOpenReview}
-                        
+
                         // SYSTEMATIC: Pass action handlers for Locking & GL Posting & Status Updates
                         onLockPeriod={handleLockPeriod}
                         onPostJournal={handlePostJournalEntry}
@@ -705,7 +726,7 @@ const App: React.FC = () => {
     switch (currentView) {
         case 'dashboard':
             return <Dashboard documents={documents} staff={staff} clients={clients} />;
-        case 'command-center': 
+        case 'command-center':
             return <MasterCommandCenter clients={clients} staff={staff} onNavigateToIssue={handleNavigateToIssue} onSelectClient={handleSelectClient} />;
         case 'workplace':
              return <StaffWorkplace currentStaffId={CURRENT_USER_ID} clients={clients} documents={documents} onReviewDoc={handleOpenReview} />;
@@ -714,11 +735,11 @@ const App: React.FC = () => {
         case 'documents':
             return (
                 <div className="h-full flex flex-col">
-                    <SmartDocumentArchive 
-                        documents={documents} 
-                        staff={staff} 
+                    <SmartDocumentArchive
+                        documents={documents}
+                        staff={staff}
                         clients={clients}
-                        onReview={handleOpenReview} 
+                        onReview={handleOpenReview}
                         onBatchApprove={handleBatchApprove} // Added
                     />
                 </div>
@@ -730,12 +751,12 @@ const App: React.FC = () => {
             return <ClientDirectory clients={clients} onSelectClient={handleSelectClient} />;
         case 'reports':
             // SYSTEMATIC: Pass GL entries to global reporting view
-            return <TaxReporting 
-                documents={documents} 
-                clients={clients} 
-                glEntries={glEntries} 
+            return <TaxReporting
+                documents={documents}
+                clients={clients}
+                glEntries={glEntries}
                 onPostJournal={handlePostJournalEntry}
-                onPublishReport={handlePublishReport} 
+                onPublishReport={handlePublishReport}
             />;
         default:
             return <Dashboard documents={documents} staff={staff} clients={clients} />;
@@ -756,7 +777,7 @@ const App: React.FC = () => {
 
       {/* Conditionally render sidebar based on view */}
       {currentView !== 'client-portal' && <Sidebar activeView={currentView} onChangeView={setCurrentView} />}
-      
+
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {currentView !== 'client-portal' && (
             <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-8 shrink-0 shadow-sm z-10">
@@ -764,18 +785,30 @@ const App: React.FC = () => {
                     {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     {isOfflineMode && (
                         <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                            <WifiOff size={10} /> Offline Mode
+                            <WifiOff size={10} /> Demo Mode
                         </span>
                     )}
                 </div>
                 <div className="flex items-center gap-4">
+                    {/* User Info */}
                     <div className="text-right hidden md:block">
-                        <p className="text-sm font-semibold text-slate-800">John Ledger</p>
-                        <p className="text-xs text-slate-500">Senior Accountant</p>
+                        <p className="text-sm font-semibold text-slate-800">{user?.displayName || 'User'}</p>
+                        <p className="text-xs text-slate-500 capitalize">{user?.role || 'accountant'}</p>
                     </div>
+
+                    {/* User Avatar */}
                     <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold border-2 border-white shadow-md">
-                        JL
+                        {user?.displayName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || <User size={20} />}
                     </div>
+
+                    {/* Sign Out Button */}
+                    <button
+                      onClick={handleSignOut}
+                      className="ml-2 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="ออกจากระบบ"
+                    >
+                      <LogOut size={20} />
+                    </button>
                 </div>
             </header>
         )}
@@ -786,6 +819,48 @@ const App: React.FC = () => {
       </div>
     </div>
   );
+};
+
+// Main App with Auth Provider wrapper
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
+    </ErrorBoundary>
+  );
+};
+
+// Authenticated App component that checks auth state
+const AuthenticatedApp: React.FC = () => {
+  const { isAuthenticated, loading } = useAuth();
+  const [loginUser, setLoginUser] = useState<any>(null);
+
+  // Handle login success from Login component
+  const handleLoginSuccess = (user: any) => {
+    setLoginUser(user);
+  };
+
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 size={48} className="animate-spin text-blue-600 mx-auto mb-4"/>
+          <h2 className="text-xl font-bold text-slate-800">กำลังตรวจสอบสถานะการเข้าสู่ระบบ...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // Show main app if authenticated
+  return <AppContent />;
 };
 
 export default App;
