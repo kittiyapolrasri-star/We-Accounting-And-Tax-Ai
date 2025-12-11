@@ -347,11 +347,11 @@ export const addGLEntries = async (entries: Omit<PostedGLEntry, 'id'>[]): Promis
     }
 
     try {
-        const batch = writeBatch(db);
+        const batch = writeBatch(db!);
         const newIds: string[] = [];
 
         entries.forEach(entry => {
-            const docRef = doc(collection(db, COLLECTIONS.GL_ENTRIES));
+            const docRef = doc(collection(db!, COLLECTIONS.GL_ENTRIES));
             batch.set(docRef, entry);
             newIds.push(docRef.id);
         });
@@ -493,11 +493,11 @@ export const addBankTransactions = async (transactions: Omit<BankTransaction, 'i
     }
 
     try {
-        const batch = writeBatch(db);
+        const batch = writeBatch(db!);
         const newIds: string[] = [];
 
         transactions.forEach(txn => {
-            const docRef = doc(collection(db, COLLECTIONS.BANK_TRANSACTIONS));
+            const docRef = doc(collection(db!, COLLECTIONS.BANK_TRANSACTIONS));
             batch.set(docRef, txn);
             newIds.push(docRef.id);
         });
@@ -585,9 +585,9 @@ export const batchUpdateDocuments = async (documents: DocumentRecord[]): Promise
     }
 
     try {
-        const batch = writeBatch(db);
+        const batch = writeBatch(db!);
         documents.forEach(document => {
-            const docRef = doc(db, COLLECTIONS.DOCUMENTS, document.id);
+            const docRef = doc(db!, COLLECTIONS.DOCUMENTS, document.id);
             batch.set(docRef, document);
         });
         await batch.commit();
