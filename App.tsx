@@ -19,6 +19,7 @@ import BankReconciliation from './components/BankReconciliation';
 import StaffWorkplace from './components/StaffWorkplace';
 import ClientDetail from './components/ClientDetail';
 import ClientPortal from './components/ClientPortal';
+import PayrollManagement from './components/PayrollManagement';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Main App Content (requires authentication)
@@ -749,6 +750,8 @@ const AppContent: React.FC = () => {
             return <BankReconciliation documents={documents} clients={clients} onPostAdjustment={handlePostJournalEntry} />;
         case 'clients':
             return <ClientDirectory clients={clients} onSelectClient={handleSelectClient} />;
+        case 'payroll':
+            return <PayrollManagement clients={clients} onPostJournal={handlePostJournalEntry} />;
         case 'reports':
             // SYSTEMATIC: Pass GL entries to global reporting view
             return <TaxReporting
