@@ -31,64 +31,70 @@ const fileToBase64 = (file: File): Promise<string> => {
 const generateDemoResponse = (filename: string): AccountingResponse => {
   const now = new Date();
   const invoiceNo = `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+  const dateStr = now.toISOString().split('T')[0];
 
   return {
-    document_type: "ใบกำกับภาษี",
-    document_date: now.toISOString().split('T')[0],
-    invoice_number: invoiceNo,
-    seller: {
-      name: "บริษัท ตัวอย่าง จำกัด",
-      tax_id: "0105500000001",
-      address: "123 ถ.สุขุมวิท กรุงเทพฯ 10110",
-      branch: "สำนักงานใหญ่"
-    },
-    buyer: {
-      name: "Demo Client",
-      tax_id: "0105500000002",
-      address: "456 ถ.รัชดา กรุงเทพฯ 10400",
-      branch: "สำนักงานใหญ่"
-    },
-    financial_details: {
-      subtotal: 10000,
-      discount: 0,
-      amount_before_vat: 10000,
-      vat_rate: 7,
-      vat_amount: 700,
-      grand_total: 10700
-    },
-    line_items: [
-      {
-        description: `Demo item from ${filename}`,
-        quantity: 1,
-        unit_price: 10000,
-        amount: 10000
-      }
-    ],
-    accounting_entry: {
-      debit_entries: [
-        { account_code: "52100", account_name: "ค่าใช้จ่ายดำเนินงาน", amount: 10000 },
-        { account_code: "11540", account_name: "ภาษีซื้อ", amount: 700 }
-      ],
-      credit_entries: [
-        { account_code: "21200", account_name: "เจ้าหนี้การค้า", amount: 10700 }
-      ]
-    },
-    tax_compliance: {
-      requires_wht: false,
-      wht_rate: 0,
-      wht_amount: 0,
-      wht_form: null,
-      vat_claimable: true
-    },
-    confidence: 0.85,
     status: "needs_review",
+    confidence_score: 85,
+    review_reason: "Demo Mode - กรุณาตั้งค่า Firebase เพื่อใช้งานจริง",
     audit_flags: [
       {
         severity: "low",
         code: "DEMO_MODE",
         message: "นี่คือข้อมูลตัวอย่างจาก Demo Mode - กรุณาตั้งค่า Firebase เพื่อใช้งานจริง"
       }
-    ]
+    ],
+    file_metadata: {
+      suggested_filename: `${invoiceNo}_${filename}`,
+      suggested_folder_path: `/clients/demo/invoices/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`
+    },
+    header_data: {
+      doc_type: "ใบกำกับภาษี",
+      issue_date: dateStr,
+      inv_number: invoiceNo,
+      currency: "THB",
+      vat_period: {
+        month: String(now.getMonth() + 1).padStart(2, '0'),
+        year: String(now.getFullYear())
+      }
+    },
+    parties: {
+      client_company: {
+        name: "Demo Client",
+        tax_id: "0105500000002",
+        address: "456 ถ.รัชดา กรุงเทพฯ 10400",
+        branch: "สำนักงานใหญ่"
+      },
+      counterparty: {
+        name: "บริษัท ตัวอย่าง จำกัด",
+        tax_id: "0105500000001",
+        address: "123 ถ.สุขุมวิท กรุงเทพฯ 10110",
+        branch: "สำนักงานใหญ่"
+      }
+    },
+    financials: {
+      subtotal: 10000,
+      discount: 0,
+      vat_rate: 7,
+      vat_amount: 700,
+      grand_total: 10700,
+      wht_amount: null
+    },
+    accounting_entry: {
+      transaction_description: `ซื้อสินค้า/บริการจาก บริษัท ตัวอย่าง จำกัด - ${filename}`,
+      account_class: "ค่าใช้จ่าย",
+      journal_lines: [
+        { account_code: "52100", account_side: "DEBIT", account_name_th: "ค่าใช้จ่ายดำเนินงาน", amount: 10000 },
+        { account_code: "11540", account_side: "DEBIT", account_name_th: "ภาษีซื้อ", amount: 700 },
+        { account_code: "21200", account_side: "CREDIT", account_name_th: "เจ้าหนี้การค้า", amount: 10700 }
+      ]
+    },
+    tax_compliance: {
+      is_full_tax_invoice: true,
+      vat_claimable: true,
+      wht_flag: false,
+      wht_rate: 0
+    }
   };
 };
 
