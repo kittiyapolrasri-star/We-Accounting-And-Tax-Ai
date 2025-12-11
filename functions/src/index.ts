@@ -271,6 +271,67 @@ app.get("/api/clients/:clientId/documents",
 );
 
 // ======================
+// CLIENT-SIDE LOG COLLECTION
+// ======================
+app.post("/api/logs",
+  async (req, res) => {
+    try {
+      const { errors, metrics, clientVersion } = req.body;
+
+      // Log errors to Cloud Logging
+      if (errors && errors.length > 0) {
+        errors.forEach((error: any) => {
+          if (error.type === "error") {
+            console.error("Client Error:", {
+              message: error.message,
+              stack: error.stack,
+              context: error.context,
+              userId: error.userId,
+              url: error.url,
+              timestamp: error.timestamp,
+              clientVersion,
+            });
+          } else {
+            console.warn("Client Warning:", {
+              message: error.message,
+              context: error.context,
+              userId: error.userId,
+              url: error.url,
+              timestamp: error.timestamp,
+            });
+          }
+        });
+      }
+
+      // Log metrics to Cloud Logging (for analysis)
+      if (metrics && metrics.length > 0) {
+        // Aggregate metrics for logging
+        const metricsSummary = metrics.reduce((acc: any, m: any) => {
+          if (!acc[m.name]) {
+            acc[m.name] = { count: 0, total: 0, max: 0 };
+          }
+          acc[m.name].count++;
+          acc[m.name].total += m.value;
+          acc[m.name].max = Math.max(acc[m.name].max, m.value);
+          return acc;
+        }, {});
+
+        console.log("Client Metrics:", {
+          summary: metricsSummary,
+          count: metrics.length,
+          clientVersion,
+        });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error processing logs:", error);
+      res.status(500).json({ success: false, error: "Failed to process logs" });
+    }
+  }
+);
+
+// ======================
 // 404 Handler
 // ======================
 app.use((req, res) => {
