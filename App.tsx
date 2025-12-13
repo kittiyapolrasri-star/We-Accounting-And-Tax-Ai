@@ -24,6 +24,7 @@ import MasterData from './components/MasterData';
 import CashFlowStatement from './components/CashFlowStatement';
 import TaxEfiling from './components/TaxEfiling';
 import AutomationDashboard from './components/AutomationDashboard';
+import WorkflowDashboard from './components/WorkflowDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Main App Content (requires authentication)
@@ -767,6 +768,13 @@ const AppContent: React.FC = () => {
                 documents={documents}
                 clients={clients}
                 vendorRules={vendorRules}
+            />;
+        case 'workflow':
+            return <WorkflowDashboard
+                documents={documents}
+                clients={clients}
+                staff={staff}
+                currentUserId={CURRENT_USER_ID}
             />;
         case 'reports':
             // SYSTEMATIC: Pass GL entries to global reporting view
