@@ -649,6 +649,7 @@ export const getTaskStatistics = (
   avgCompletionTime: number;
   byCategory: Record<string, number>;
   byPriority: Record<string, number>;
+  byStatus: Record<string, number>;
 } => {
   let filteredTasks = tasks;
 
@@ -669,10 +670,12 @@ export const getTaskStatistics = (
 
   const byCategory: Record<string, number> = {};
   const byPriority: Record<string, number> = {};
+  const byStatus: Record<string, number> = {};
 
   filteredTasks.forEach((task) => {
     byCategory[task.category] = (byCategory[task.category] || 0) + 1;
     byPriority[task.priority] = (byPriority[task.priority] || 0) + 1;
+    byStatus[task.status] = (byStatus[task.status] || 0) + 1;
   });
 
   // Calculate average completion time
@@ -695,6 +698,7 @@ export const getTaskStatistics = (
     avgCompletionTime: completedTasks.length > 0 ? Math.round((totalTime / completedTasks.length) * 10) / 10 : 0,
     byCategory,
     byPriority,
+    byStatus,
   };
 };
 
