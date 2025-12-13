@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Upload, Loader2, AlertCircle, FileStack, ArrowRight, CheckCircle2, WifiOff, RefreshCcw, Database, LogOut, User } from 'lucide-react';
 import { analyzeDocument } from './services/geminiService';
 import { databaseService } from './services/database';
+import { validateGLPosting, GLPostingRequest, ValidationResult } from './services/accountingValidation';
 import { isFirebaseConfigured } from './services/firebase';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import Login from './components/Login';
@@ -163,14 +164,48 @@ const AppContent: React.FC = () => {
       }
   };
 
-  // SYSTEMATIC POSTING ENGINE
+  // SYSTEMATIC POSTING ENGINE with Validation
   const handlePostJournalEntry = async (entries: PostedGLEntry[]) => {
-      // 1. Save GL to Local State (Critical for immediate UI update)
+      const clientId = selectedClientId || 'C001'; // Fallback
+      const userId = user?.uid || 'system';
+
+      // CRITICAL: Validate GL entries before posting
+      // Derive period from first entry date (format: "2024-02")
+      const firstEntryDate = entries[0]?.date || new Date().toISOString().slice(0, 10);
+      const periodMonth = firstEntryDate.slice(0, 7); // "YYYY-MM"
+
+      const validationRequest: GLPostingRequest = {
+          clientId,
+          entries: entries.map(e => ({
+              ...e,
+              clientId
+          })),
+          userId,
+          periodMonth,
+          sourceDocId: entries[0]?.doc_no
+      };
+
+      const validation = await validateGLPosting(validationRequest);
+
+      // Show warnings even if valid
+      if (validation.warnings.length > 0) {
+          validation.warnings.forEach(w => {
+              showNotification(`⚠️ ${w.message}`, 'error');
+          });
+      }
+
+      // Block posting if validation fails
+      if (!validation.isValid) {
+          const errorMessages = validation.errors.map(e => e.message).join(', ');
+          showNotification(`❌ ไม่สามารถลงบัญชีได้: ${errorMessages}`, 'error');
+          await logAction('POST_GL', `GL posting blocked: ${errorMessages}`, 'error');
+          return;
+      }
+
+      // Save GL to Local State (Critical for immediate UI update)
       setGlEntries(prev => [...prev, ...entries]);
 
       // Persist each with Client ID
-      const clientId = selectedClientId || 'C001'; // Fallback
-
       for(const entry of entries) {
           await databaseService.addGLEntry({ ...entry, clientId });
       }
@@ -269,20 +304,25 @@ const AppContent: React.FC = () => {
       showNotification(`เผยแพร่รายงาน "${report.title}" ไปยัง Client Portal แล้ว`, 'success');
   };
 
-  // --- BATCH APPROVAL ENGINE ---
+  // --- BATCH APPROVAL ENGINE with Validation ---
   const handleBatchApprove = async (docIds: string[]) => {
       const docsToApprove = documents.filter(d => docIds.includes(d.id));
-      const newGLEntries: PostedGLEntry[] = [];
-      const approvedIds: string[] = [];
+      const userId = user?.uid || 'system';
+
+      // Group GL entries by document for individual validation
+      const docEntriesMap: Map<string, { entries: PostedGLEntry[], docNo: string, clientId: string }> = new Map();
+      const failedDocs: string[] = [];
+      const successDocs: string[] = [];
 
       docsToApprove.forEach(doc => {
           if (doc.status !== 'approved' && doc.ai_data) {
               const client = clients.find(c => c.name === doc.client_name);
               const targetClientId = client ? client.id : 'C001';
+              const docEntries: PostedGLEntry[] = [];
 
-              // Create GL Entries
+              // Create GL Entries for this document
               doc.ai_data.accounting_entry.journal_lines.forEach((line, index) => {
-                  newGLEntries.push({
+                  docEntries.push({
                       id: `GL-${doc.id}-${index}`,
                       clientId: targetClientId,
                       date: doc.ai_data!.header_data.issue_date,
@@ -290,39 +330,84 @@ const AppContent: React.FC = () => {
                       description: doc.ai_data!.accounting_entry.transaction_description,
                       account_code: line.account_code,
                       account_name: line.account_name_th,
-                      department_code: line.department_code, // Capture Dept Code
+                      department_code: line.department_code,
                       debit: line.account_side === 'DEBIT' ? line.amount : 0,
                       credit: line.account_side === 'CREDIT' ? line.amount : 0,
                       system_generated: false
                   });
               });
-              approvedIds.push(doc.id);
+
+              docEntriesMap.set(doc.id, {
+                  entries: docEntries,
+                  docNo: doc.ai_data.header_data.inv_number,
+                  clientId: targetClientId
+              });
           }
       });
 
-      if (newGLEntries.length > 0) {
-          // Optimization: Bulk write could be used here
-          for (const entry of newGLEntries) {
-             await databaseService.addGLEntry(entry);
-          }
-          setGlEntries(prev => [...prev, ...newGLEntries]); // Update local state if needed
+      // Validate and post each document individually
+      const allPostedEntries: PostedGLEntry[] = [];
 
-          // Update Docs Status
-          const updatedDocs = documents.map(d => approvedIds.includes(d.id) ? { ...d, status: 'approved' as const } : d);
+      for (const [docId, { entries, docNo, clientId }] of docEntriesMap) {
+          // CRITICAL: Validate GL entries before posting
+          // Derive period from first entry date
+          const firstEntryDate = entries[0]?.date || new Date().toISOString().slice(0, 10);
+          const periodMonth = firstEntryDate.slice(0, 7); // "YYYY-MM"
+
+          const validationRequest: GLPostingRequest = {
+              clientId,
+              entries,
+              userId,
+              periodMonth,
+              sourceDocId: docNo
+          };
+
+          const validation = await validateGLPosting(validationRequest);
+
+          if (!validation.isValid) {
+              const errorMessages = validation.errors.map(e => e.message).join(', ');
+              console.warn(`Validation failed for ${docNo}: ${errorMessages}`);
+              failedDocs.push(docNo);
+              continue;
+          }
+
+          // Post valid entries
+          for (const entry of entries) {
+              await databaseService.addGLEntry(entry);
+          }
+          allPostedEntries.push(...entries);
+          successDocs.push(docId);
+      }
+
+      if (allPostedEntries.length > 0) {
+          setGlEntries(prev => [...prev, ...allPostedEntries]);
+
+          // Update Docs Status - only successful ones
+          const updatedDocs = documents.map(d => successDocs.includes(d.id) ? { ...d, status: 'approved' as const } : d);
           setDocuments(updatedDocs);
 
           // Persist Doc Updates
-          for(const d of updatedDocs.filter(doc => approvedIds.includes(doc.id))) {
+          for(const d of updatedDocs.filter(doc => successDocs.includes(doc.id))) {
               await databaseService.updateDocument(d);
           }
 
           // Resolve Issues
-          approvedIds.forEach(id => resolveRelatedIssues(id));
-          showNotification(`Approved & Posted ${approvedIds.length} documents.`, 'success');
+          successDocs.forEach(id => resolveRelatedIssues(id));
+      }
 
-          await logAction('APPROVE', `Batch approved ${approvedIds.length} documents.`);
-      } else {
-          showNotification('No eligible documents to approve.', 'error');
+      // Show results
+      if (successDocs.length > 0) {
+          showNotification(`อนุมัติและลงบัญชีสำเร็จ ${successDocs.length} เอกสาร`, 'success');
+          await logAction('APPROVE', `Batch approved ${successDocs.length} documents.`);
+      }
+
+      if (failedDocs.length > 0) {
+          showNotification(`❌ ไม่สามารถลงบัญชีได้ ${failedDocs.length} เอกสาร: ${failedDocs.join(', ')}`, 'error');
+          await logAction('APPROVE', `Validation failed for ${failedDocs.length} documents: ${failedDocs.join(', ')}`, 'error');
+      }
+
+      if (successDocs.length === 0 && failedDocs.length === 0) {
+          showNotification('ไม่มีเอกสารที่สามารถอนุมัติได้', 'error');
       }
   };
 
