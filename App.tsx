@@ -25,6 +25,7 @@ import CashFlowStatement from './components/CashFlowStatement';
 import TaxEfiling from './components/TaxEfiling';
 import AutomationDashboard from './components/AutomationDashboard';
 import WorkflowDashboard from './components/WorkflowDashboard';
+import SmartDashboard from './components/SmartDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Main App Content (requires authentication)
@@ -775,6 +776,21 @@ const AppContent: React.FC = () => {
                 clients={clients}
                 staff={staff}
                 currentUserId={CURRENT_USER_ID}
+            />;
+        case 'smart-dashboard':
+            return <SmartDashboard
+                documents={documents}
+                clients={clients}
+                staff={staff}
+                glEntries={glEntries}
+                onNavigateToClient={(clientId) => {
+                    setSelectedClientId(clientId);
+                    setCurrentView('client-detail');
+                }}
+                onNavigateToDocument={(docId) => {
+                    const doc = documents.find(d => d.id === docId);
+                    if (doc) handleOpenReview(doc);
+                }}
             />;
         case 'reports':
             // SYSTEMATIC: Pass GL entries to global reporting view

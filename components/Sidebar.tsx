@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Users, Settings, PlusCircle, PieChart, Building, FilePlus, BarChart3, ChevronRight, Scale, Briefcase, Globe, DollarSign, Database, RefreshCw, Send, Zap, GitBranch } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, Settings, PlusCircle, PieChart, Building, FilePlus, BarChart3, ChevronRight, Scale, Briefcase, Globe, DollarSign, Database, RefreshCw, Send, Zap, GitBranch, Gauge } from 'lucide-react';
 
 interface Props {
   activeView: string;
@@ -28,6 +28,7 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView }) => {
     { id: 'efiling', label: 'ยื่นภาษี e-Filing', subLabel: 'Tax e-Filing', icon: Send },
     { id: 'automation', label: 'ระบบอัตโนมัติ', subLabel: 'Smart Automation', icon: Zap },
     { id: 'workflow', label: 'ระบบอนุมัติ', subLabel: 'Workflow & Approval', icon: GitBranch },
+    { id: 'smart-dashboard', label: 'แดชบอร์ดอัจฉริยะ', subLabel: 'Smart Dashboard', icon: Gauge },
     { id: 'reports', label: 'รายงานภาษี & ปิดงบ', subLabel: 'Tax Reports', icon: PieChart },
     { id: 'staff', label: 'ทีมงาน', subLabel: 'Staff', icon: Users },
   ];
