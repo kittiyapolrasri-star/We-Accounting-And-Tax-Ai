@@ -365,32 +365,35 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
             <h3 className="text-lg font-semibold text-gray-900 mb-4">งานตามสถานะ</h3>
             <div className="space-y-4">
               {Object.entries(teamStats.byStatus || {})
-                .filter(([, count]) => count > 0)
-                .map(([status, count]) => (
-                  <div key={status} className="flex items-center gap-4">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: TASK_STATUS_COLORS[status as TaskStatus] }}
-                    />
-                    <span className="flex-1 text-sm text-gray-600">
-                      {TASK_STATUS_LABELS[status as TaskStatus]}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${(count / teamStats.total) * 100}%`,
-                            backgroundColor: TASK_STATUS_COLORS[status as TaskStatus],
-                          }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-gray-900 w-8 text-right">
-                        {count}
+                .filter(([, count]) => (count as number) > 0)
+                .map(([status, count]) => {
+                  const countNum = count as number;
+                  return (
+                    <div key={status} className="flex items-center gap-4">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: TASK_STATUS_COLORS[status as TaskStatus] }}
+                      />
+                      <span className="flex-1 text-sm text-gray-600">
+                        {TASK_STATUS_LABELS[status as TaskStatus]}
                       </span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${(countNum / teamStats.total) * 100}%`,
+                              backgroundColor: TASK_STATUS_COLORS[status as TaskStatus],
+                            }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 w-8 text-right">
+                          {countNum}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           </div>
 
@@ -398,37 +401,40 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">งานตามความสำคัญ</h3>
             <div className="space-y-4">
-              {Object.entries(teamStats.byPriority || {}).map(([priority, count]) => (
-                <div key={priority} className="flex items-center gap-4">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: TASK_PRIORITY_COLORS[priority as TaskPriority] }}
-                  />
-                  <span className="flex-1 text-sm text-gray-600">
-                    {priority === 'urgent'
-                      ? 'เร่งด่วนมาก'
-                      : priority === 'high'
-                      ? 'สำคัญ'
-                      : priority === 'medium'
-                      ? 'ปานกลาง'
-                      : 'ไม่เร่งด่วน'}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${(count / teamStats.total) * 100}%`,
-                          backgroundColor: TASK_PRIORITY_COLORS[priority as TaskPriority],
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium text-gray-900 w-8 text-right">
-                      {count}
+              {Object.entries(teamStats.byPriority || {}).map(([priority, count]) => {
+                const countNum = count as number;
+                return (
+                  <div key={priority} className="flex items-center gap-4">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: TASK_PRIORITY_COLORS[priority as TaskPriority] }}
+                    />
+                    <span className="flex-1 text-sm text-gray-600">
+                      {priority === 'urgent'
+                        ? 'เร่งด่วนมาก'
+                        : priority === 'high'
+                        ? 'สำคัญ'
+                        : priority === 'medium'
+                        ? 'ปานกลาง'
+                        : 'ไม่เร่งด่วน'}
                     </span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${(countNum / teamStats.total) * 100}%`,
+                            backgroundColor: TASK_PRIORITY_COLORS[priority as TaskPriority],
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 w-8 text-right">
+                        {countNum}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
