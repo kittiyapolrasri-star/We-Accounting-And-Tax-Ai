@@ -120,6 +120,7 @@ export interface DocumentRecord {
   status: DocumentStatus;
   assigned_to: string | null; // Staff ID
   client_name: string;
+  clientId?: string; // NEW: Proper client ID reference for multi-tenancy
   amount: number;
   selected?: boolean; // For Batch Operations
 }
@@ -242,10 +243,16 @@ export interface FixedAsset {
 // NEW: Automation Rules
 export interface VendorRule {
   id: string;
+  clientId?: string; // NEW: Per-client rules (null = global/template)
   vendorNameKeyword: string;
   accountCode: string;
   accountName: string;
   vatType: 'CLAIMABLE' | 'NON_CLAIMABLE' | 'EXEMPT';
+  whtRate?: number; // NEW: WHT rate for this vendor
+  description?: string; // NEW: Description/notes
+  isActive?: boolean; // NEW: Enable/disable rule
+  createdAt?: string; // NEW: Audit trail
+  createdBy?: string; // NEW: Who created
 }
 
 // SYSTEMATIC: Audit Trail & Activity Log

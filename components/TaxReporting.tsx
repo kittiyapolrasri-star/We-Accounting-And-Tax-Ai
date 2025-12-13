@@ -1,7 +1,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { DocumentRecord, Client, PostedGLEntry, PublishedReport } from '../types';
-import { Printer, Download, Filter, FileText, CheckCircle2, AlertTriangle, ChevronDown, ListFilter, Zap, ArrowRight, X, Eye, FileDigit, Code, Share2, Calculator } from 'lucide-react';
+import { Printer, Download, Filter, FileText, CheckCircle2, AlertTriangle, ChevronDown, ListFilter, Zap, ArrowRight, X, Eye, FileDigit, Code, Share2, Calculator, FileDown } from 'lucide-react';
+import {
+  generateVATReportPDF,
+  generateWHTSummaryPDF,
+  generatePP30SummaryPDF,
+  TaxFormData,
+  VATReportItem,
+  WHTReportItem
+} from '../utils/pdfExport';
 
 interface Props {
   documents: DocumentRecord[];
@@ -154,6 +162,84 @@ const TaxReporting: React.FC<Props> = ({ documents, clients, glEntries = [], onP
       }
   };
 
+  // Get current client and period info for PDF export
+  const getCurrentFormData = (): TaxFormData => {
+      const client = clients.find(c => c.id === selectedClient);
+      const now = new Date();
+      const thaiMonths = [
+          'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+          'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+      ];
+      const buddhistYear = now.getFullYear() + 543;
+
+      return {
+          companyName: client?.name || 'บริษัท ตัวอย่าง จำกัด',
+          companyTaxId: client?.tax_id || '0-0000-00000-00-0',
+          companyAddress: client?.address,
+          period: `${thaiMonths[now.getMonth()]} ${buddhistYear}`,
+          year: buddhistYear.toString()
+      };
+  };
+
+  // Convert documents to VAT report items
+  const getVATItems = (): VATReportItem[] => {
+      return vatDocs.map(doc => ({
+          date: doc.ai_data?.header_data.issue_date || '',
+          docNo: doc.ai_data?.header_data.inv_number || '',
+          counterpartyName: doc.ai_data?.parties.counterparty.name || '',
+          counterpartyTaxId: doc.ai_data?.parties.counterparty.tax_id || '',
+          baseAmount: doc.ai_data?.financials.subtotal || 0,
+          vatAmount: doc.ai_data?.financials.vat_amount || 0
+      }));
+  };
+
+  // Convert documents to WHT report items
+  const getWHTItems = (formType: 'PND3' | 'PND53'): WHTReportItem[] => {
+      const docs = formType === 'PND3' ? pnd3Docs : pnd53Docs;
+      return docs.map(doc => {
+          // Determine income type based on WHT rate
+          const whtRate = doc.ai_data?.tax_compliance.wht_rate || 3;
+          let incomeType = 'ค่าบริการ';
+          if (whtRate === 1) incomeType = 'ค่าโฆษณา';
+          else if (whtRate === 2) incomeType = 'ค่าขนส่ง';
+          else if (whtRate === 5) incomeType = 'ค่าเช่า';
+          else if (whtRate === 10) incomeType = 'เงินปันผล';
+
+          return {
+              date: doc.ai_data?.header_data.issue_date || '',
+              docNo: doc.ai_data?.header_data.inv_number || '',
+              payeeName: doc.ai_data?.parties.counterparty.name || '',
+              payeeTaxId: doc.ai_data?.parties.counterparty.tax_id || '',
+              incomeType,
+              whtRate,
+              baseAmount: doc.ai_data?.financials.subtotal || 0,
+              whtAmount: ((doc.ai_data?.financials.subtotal || 0) * whtRate) / 100
+          };
+      });
+  };
+
+  // Handle PDF export based on active tab
+  const handleExportPDF = () => {
+      const formData = getCurrentFormData();
+
+      if (activeTab === 'vat') {
+          // Export VAT input report and PP30 summary
+          const vatItems = getVATItems();
+          generateVATReportPDF(formData, vatItems, 'input');
+
+          // Also generate PP30 summary
+          setTimeout(() => {
+              generatePP30SummaryPDF(formData, outputVat, inputVat, [], vatItems);
+          }, 500);
+      } else if (activeTab === 'pnd3') {
+          const whtItems = getWHTItems('PND3');
+          generateWHTSummaryPDF(formData, whtItems, 'PND3');
+      } else if (activeTab === 'pnd53') {
+          const whtItems = getWHTItems('PND53');
+          generateWHTSummaryPDF(formData, whtItems, 'PND53');
+      }
+  };
+
   return (
     <div className="h-full flex flex-col animate-in fade-in duration-500">
         <div className="flex justify-between items-center mb-6">
@@ -233,6 +319,9 @@ const TaxReporting: React.FC<Props> = ({ documents, clients, glEntries = [], onP
                      <button onClick={() => setActiveTab('pnd53')} className={`py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'pnd53' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'}`}>WHT (ภ.ง.ด.53)</button>
                  </div>
                  <div className="flex gap-2">
+                     <button onClick={handleExportPDF} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-100 hover:bg-emerald-100">
+                         <FileDown size={14} /> Export PDF
+                     </button>
                      <button onClick={() => setShowClosingWizard(true)} className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100 hover:bg-amber-100">
                          <Zap size={14} /> Close Period
                      </button>

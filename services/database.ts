@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "./firebase";
 import { Client, DocumentRecord, Staff, PostedGLEntry, FixedAsset, VendorRule, BankTransaction, ActivityLog } from '../types';
+import { validateGLPosting, GLPostingRequest, ValidationResult } from './accountingValidation';
 
 // --- CONFIGURATION ---
 const STORAGE_KEY = 'WE_ACCOUNTING_DB_V1';
@@ -364,6 +365,61 @@ export const addGLEntries = async (entries: Omit<PostedGLEntry, 'id'>[]): Promis
     }
 };
 
+/**
+ * Add GL entries with validation (RECOMMENDED)
+ * Validates balance, account codes, period lock before posting
+ */
+export const addGLEntriesValidated = async (
+    entries: Omit<PostedGLEntry, 'id'>[],
+    clientId: string,
+    userId: string,
+    sourceDocId?: string
+): Promise<{ success: boolean; ids: string[]; validation: ValidationResult }> => {
+    // Build validation request
+    const request: GLPostingRequest = {
+        entries,
+        clientId,
+        periodMonth: new Date().toISOString().slice(0, 7), // Current month
+        sourceDocId,
+        userId,
+    };
+
+    // Validate before posting
+    const validation = await validateGLPosting(request);
+
+    if (!validation.isValid) {
+        console.error('GL validation failed:', validation.errors);
+        return { success: false, ids: [], validation };
+    }
+
+    // Log warnings if any
+    if (validation.warnings.length > 0) {
+        console.warn('GL posting warnings:', validation.warnings);
+    }
+
+    // Post entries
+    try {
+        const ids = await addGLEntries(entries);
+        return { success: true, ids, validation };
+    } catch (error) {
+        console.error('GL posting failed after validation:', error);
+        return {
+            success: false,
+            ids: [],
+            validation: {
+                isValid: false,
+                errors: [{
+                    code: 'GL_POST_FAILED',
+                    message: 'Failed to post GL entries',
+                    messageTh: 'ไม่สามารถบันทึกรายการบัญชีได้',
+                    severity: 'critical',
+                }],
+                warnings: [],
+            },
+        };
+    }
+};
+
 // --- FIXED ASSETS ---
 export const getAssets = async (): Promise<FixedAsset[]> => {
     return fetchCollection<FixedAsset>(COLLECTIONS.ASSETS);
@@ -413,6 +469,39 @@ export const updateAsset = async (asset: FixedAsset): Promise<void> => {
 // --- VENDOR RULES ---
 export const getRules = async (): Promise<VendorRule[]> => {
     return fetchCollection<VendorRule>(COLLECTIONS.VENDOR_RULES);
+};
+
+/**
+ * Get vendor rules for a specific client (includes global rules)
+ */
+export const getRulesByClient = async (clientId: string): Promise<VendorRule[]> => {
+    if (IS_DEMO_MODE || !db) {
+        const data = getLocalStorage();
+        // Return rules for this client + global rules (no clientId)
+        return data.vendorRules.filter(r =>
+            !r.clientId || r.clientId === clientId
+        );
+    }
+
+    try {
+        // Get client-specific rules
+        const clientRules = await fetchCollection<VendorRule>(
+            COLLECTIONS.VENDOR_RULES,
+            [where('clientId', '==', clientId)]
+        );
+
+        // Get global rules (no clientId or null)
+        const globalRules = await fetchCollection<VendorRule>(
+            COLLECTIONS.VENDOR_RULES,
+            [where('clientId', '==', null)]
+        );
+
+        return [...clientRules, ...globalRules];
+    } catch (error) {
+        console.error('Error fetching vendor rules:', error);
+        // Fallback to all rules
+        return fetchCollection<VendorRule>(COLLECTIONS.VENDOR_RULES);
+    }
 };
 
 export const addRule = async (rule: Omit<VendorRule, 'id'>): Promise<string> => {
@@ -623,6 +712,7 @@ export const databaseService = {
     getGLEntriesByClient,
     addGLEntry,
     addGLEntries,
+    addGLEntriesValidated, // NEW: With validation
 
     // Fixed Assets
     getAssets,
@@ -632,6 +722,7 @@ export const databaseService = {
 
     // Vendor Rules
     getRules,
+    getRulesByClient, // NEW: Per-client rules
     addRule,
     deleteRule,
 

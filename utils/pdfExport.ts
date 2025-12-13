@@ -1,7 +1,18 @@
 /**
- * PDF Export Utility for Financial Reports
- * Uses browser's print functionality for PDF generation
+ * PDF Export Utility for Thai Financial Reports
+ * Supports: VAT Reports (ภ.พ.30), WHT Forms (ภ.ง.ด.3, ภ.ง.ด.53), Financial Statements
  */
+
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// Extend jsPDF type for autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: typeof autoTable;
+    lastAutoTable: { finalY: number };
+  }
+}
 
 export interface ReportData {
   title: string;
@@ -11,6 +22,417 @@ export interface ReportData {
   taxId?: string;
   content: string; // HTML content
 }
+
+export interface TaxFormData {
+  companyName: string;
+  companyTaxId: string;
+  companyAddress?: string;
+  period: string; // e.g., "กุมภาพันธ์ 2567"
+  year: string;
+}
+
+export interface VATReportItem {
+  date: string;
+  docNo: string;
+  counterpartyName: string;
+  counterpartyTaxId: string;
+  baseAmount: number;
+  vatAmount: number;
+}
+
+export interface WHTReportItem {
+  date: string;
+  docNo: string;
+  payeeName: string;
+  payeeTaxId: string;
+  incomeType: string;
+  whtRate: number;
+  baseAmount: number;
+  whtAmount: number;
+}
+
+/**
+ * Format Thai date
+ */
+const formatThaiDate = (date: Date): string => {
+  const thaiMonths = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ];
+  const buddhistYear = date.getFullYear() + 543;
+  return `${date.getDate()} ${thaiMonths[date.getMonth()]} ${buddhistYear}`;
+};
+
+/**
+ * Format currency for Thai Baht
+ */
+const formatCurrency = (amount: number): string => {
+  return amount.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+/**
+ * Generate VAT Report PDF (รายงานภาษีซื้อ/ขาย for ภ.พ.30)
+ */
+export const generateVATReportPDF = (
+  formData: TaxFormData,
+  items: VATReportItem[],
+  reportType: 'input' | 'output'
+): void => {
+  const doc = new jsPDF('p', 'mm', 'a4');
+
+  // Title
+  const title = reportType === 'input' ? 'รายงานภาษีซื้อ' : 'รายงานภาษีขาย';
+  doc.setFontSize(16);
+  doc.text(title, 105, 20, { align: 'center' });
+
+  // Company info
+  doc.setFontSize(10);
+  doc.text(`บริษัท: ${formData.companyName}`, 14, 35);
+  doc.text(`เลขประจำตัวผู้เสียภาษี: ${formData.companyTaxId}`, 14, 42);
+  doc.text(`งวดเดือน: ${formData.period}`, 14, 49);
+
+  // Table
+  const tableData = items.map((item, index) => [
+    (index + 1).toString(),
+    item.date,
+    item.docNo,
+    item.counterpartyName,
+    item.counterpartyTaxId,
+    formatCurrency(item.baseAmount),
+    formatCurrency(item.vatAmount)
+  ]);
+
+  // Calculate totals
+  const totalBase = items.reduce((sum, item) => sum + item.baseAmount, 0);
+  const totalVat = items.reduce((sum, item) => sum + item.vatAmount, 0);
+
+  autoTable(doc, {
+    startY: 55,
+    head: [[
+      'ลำดับ',
+      'วันที่',
+      'เลขที่เอกสาร',
+      reportType === 'input' ? 'ชื่อผู้ขาย' : 'ชื่อผู้ซื้อ',
+      'เลขประจำตัวผู้เสียภาษี',
+      'มูลค่าสินค้า/บริการ',
+      'ภาษีมูลค่าเพิ่ม'
+    ]],
+    body: tableData,
+    foot: [[
+      '', '', '', '', 'รวม',
+      formatCurrency(totalBase),
+      formatCurrency(totalVat)
+    ]],
+    styles: { font: 'helvetica', fontSize: 8 },
+    headStyles: { fillColor: [59, 130, 246] },
+    footStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 12 },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 45 },
+      4: { cellWidth: 28 },
+      5: { cellWidth: 28, halign: 'right' },
+      6: { cellWidth: 25, halign: 'right' }
+    }
+  });
+
+  // Footer
+  const finalY = doc.lastAutoTable.finalY + 20;
+  doc.setFontSize(8);
+  doc.text(`พิมพ์จาก WE Accounting & Tax AI - ${formatThaiDate(new Date())}`, 105, finalY, { align: 'center' });
+
+  // Save
+  const filename = `VAT_${reportType === 'input' ? 'Input' : 'Output'}_${formData.period.replace(/\s/g, '_')}.pdf`;
+  doc.save(filename);
+};
+
+/**
+ * Generate WHT Certificate PDF (หนังสือรับรองการหักภาษี ณ ที่จ่าย)
+ */
+export const generateWHTCertificatePDF = (
+  formData: TaxFormData,
+  item: WHTReportItem,
+  formType: 'PND3' | 'PND53'
+): void => {
+  const doc = new jsPDF('p', 'mm', 'a4');
+
+  // Border
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.5);
+  doc.rect(10, 10, 190, 277);
+
+  // Title
+  doc.setFontSize(14);
+  doc.text('หนังสือรับรองการหักภาษี ณ ที่จ่าย', 105, 25, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text(`ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร (${formType})`, 105, 32, { align: 'center' });
+
+  // Section 1: Payer info
+  doc.setFontSize(9);
+  doc.text('1. ผู้มีหน้าที่หักภาษี ณ ที่จ่าย', 14, 45);
+  doc.setDrawColor(150);
+  doc.rect(14, 48, 182, 25);
+  doc.text(`ชื่อ: ${formData.companyName}`, 18, 55);
+  doc.text(`เลขประจำตัวผู้เสียภาษีอากร: ${formData.companyTaxId}`, 18, 62);
+  doc.text(`ที่อยู่: ${formData.companyAddress || '-'}`, 18, 69);
+
+  // Section 2: Payee info
+  doc.text('2. ผู้ถูกหักภาษี ณ ที่จ่าย', 14, 82);
+  doc.rect(14, 85, 182, 25);
+  doc.text(`ชื่อ: ${item.payeeName}`, 18, 92);
+  doc.text(`เลขประจำตัวผู้เสียภาษีอากร: ${item.payeeTaxId}`, 18, 99);
+
+  // Section 3: Income details
+  doc.text('3. รายละเอียดเงินได้และภาษีหัก ณ ที่จ่าย', 14, 120);
+
+  autoTable(doc, {
+    startY: 125,
+    head: [['ลำดับ', 'ประเภทเงินได้', 'อัตราภาษี (%)', 'จำนวนเงินที่จ่าย', 'ภาษีที่หักไว้']],
+    body: [[
+      '1',
+      item.incomeType,
+      item.whtRate.toString(),
+      formatCurrency(item.baseAmount),
+      formatCurrency(item.whtAmount)
+    ]],
+    foot: [['', '', 'รวม', formatCurrency(item.baseAmount), formatCurrency(item.whtAmount)]],
+    styles: { font: 'helvetica', fontSize: 9 },
+    headStyles: { fillColor: [59, 130, 246] },
+    footStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+    margin: { left: 14, right: 14 },
+    columnStyles: {
+      0: { cellWidth: 15 },
+      1: { cellWidth: 70 },
+      2: { cellWidth: 25, halign: 'center' },
+      3: { cellWidth: 35, halign: 'right' },
+      4: { cellWidth: 35, halign: 'right' }
+    }
+  });
+
+  const finalY = doc.lastAutoTable.finalY + 10;
+
+  // Section 4: Payment date
+  doc.text(`4. วันเดือนปีที่จ่ายเงิน: ${item.date}`, 14, finalY + 5);
+
+  // Signature section
+  doc.text('ลงชื่อ ................................................ ผู้จ่ายเงิน', 120, finalY + 40);
+  doc.text('(........................................................)', 120, finalY + 48);
+  doc.text(`วันที่ออกหนังสือรับรอง: ${formatThaiDate(new Date())}`, 120, finalY + 56);
+
+  // Footer
+  doc.setFontSize(7);
+  doc.text('พิมพ์จาก WE Accounting & Tax AI', 105, 280, { align: 'center' });
+
+  // Save
+  const filename = `WHT_${formType}_${item.payeeName.replace(/\s/g, '_')}_${item.date.replace(/\//g, '-')}.pdf`;
+  doc.save(filename);
+};
+
+/**
+ * Generate PND3/PND53 Summary Report PDF (รายงานสรุป ภ.ง.ด.3/53)
+ */
+export const generateWHTSummaryPDF = (
+  formData: TaxFormData,
+  items: WHTReportItem[],
+  formType: 'PND3' | 'PND53'
+): void => {
+  const doc = new jsPDF('p', 'mm', 'a4');
+
+  // Title
+  const title = formType === 'PND3'
+    ? 'รายงานสรุปภาษีหัก ณ ที่จ่าย (ภ.ง.ด.3)'
+    : 'รายงานสรุปภาษีหัก ณ ที่จ่าย (ภ.ง.ด.53)';
+  doc.setFontSize(14);
+  doc.text(title, 105, 20, { align: 'center' });
+
+  // Subtitle
+  doc.setFontSize(10);
+  const subtitle = formType === 'PND3'
+    ? 'สำหรับบุคคลธรรมดา'
+    : 'สำหรับนิติบุคคล';
+  doc.text(subtitle, 105, 27, { align: 'center' });
+
+  // Company info
+  doc.text(`บริษัท: ${formData.companyName}`, 14, 40);
+  doc.text(`เลขประจำตัวผู้เสียภาษี: ${formData.companyTaxId}`, 14, 47);
+  doc.text(`งวดเดือน: ${formData.period}`, 14, 54);
+
+  // Table
+  const tableData = items.map((item, index) => [
+    (index + 1).toString(),
+    item.date,
+    item.payeeName,
+    item.payeeTaxId,
+    item.incomeType,
+    `${item.whtRate}%`,
+    formatCurrency(item.baseAmount),
+    formatCurrency(item.whtAmount)
+  ]);
+
+  // Calculate totals
+  const totalBase = items.reduce((sum, item) => sum + item.baseAmount, 0);
+  const totalWht = items.reduce((sum, item) => sum + item.whtAmount, 0);
+
+  autoTable(doc, {
+    startY: 60,
+    head: [[
+      'ลำดับ',
+      'วันที่',
+      'ชื่อผู้รับเงิน',
+      'เลขประจำตัวผู้เสียภาษี',
+      'ประเภทเงินได้',
+      'อัตรา',
+      'ยอดเงิน',
+      'ภาษีหัก'
+    ]],
+    body: tableData,
+    foot: [[
+      '', '', '', '', '', 'รวม',
+      formatCurrency(totalBase),
+      formatCurrency(totalWht)
+    ]],
+    styles: { font: 'helvetica', fontSize: 7 },
+    headStyles: { fillColor: formType === 'PND3' ? [34, 197, 94] : [168, 85, 247] },
+    footStyles: { fillColor: [241, 245, 249], textColor: [0, 0, 0], fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 20 },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 30 },
+      5: { cellWidth: 12, halign: 'center' },
+      6: { cellWidth: 25, halign: 'right' },
+      7: { cellWidth: 22, halign: 'right' }
+    }
+  });
+
+  // Summary section
+  const finalY = doc.lastAutoTable.finalY + 15;
+  doc.setFontSize(10);
+  doc.setDrawColor(150);
+  doc.rect(14, finalY, 90, 30);
+  doc.text('สรุป', 18, finalY + 8);
+  doc.text(`จำนวนราย: ${items.length} ราย`, 18, finalY + 16);
+  doc.text(`ยอดเงินรวม: ${formatCurrency(totalBase)} บาท`, 18, finalY + 24);
+
+  doc.rect(106, finalY, 90, 30);
+  doc.text('ภาษีที่ต้องนำส่ง', 110, finalY + 8);
+  doc.setFontSize(14);
+  doc.text(`${formatCurrency(totalWht)} บาท`, 110, finalY + 22);
+
+  // Footer
+  doc.setFontSize(8);
+  doc.text(`พิมพ์จาก WE Accounting & Tax AI - ${formatThaiDate(new Date())}`, 105, 280, { align: 'center' });
+
+  // Save
+  const filename = `${formType}_Summary_${formData.period.replace(/\s/g, '_')}.pdf`;
+  doc.save(filename);
+};
+
+/**
+ * Generate PP30 Summary (ภ.พ.30 Summary)
+ */
+export const generatePP30SummaryPDF = (
+  formData: TaxFormData,
+  outputVat: number,
+  inputVat: number,
+  outputItems: VATReportItem[],
+  inputItems: VATReportItem[]
+): void => {
+  const doc = new jsPDF('p', 'mm', 'a4');
+
+  // Title
+  doc.setFontSize(16);
+  doc.text('สรุปแบบแสดงรายการภาษีมูลค่าเพิ่ม (ภ.พ.30)', 105, 20, { align: 'center' });
+
+  // Company info
+  doc.setFontSize(10);
+  doc.text(`บริษัท: ${formData.companyName}`, 14, 35);
+  doc.text(`เลขประจำตัวผู้เสียภาษี: ${formData.companyTaxId}`, 14, 42);
+  doc.text(`งวดเดือน: ${formData.period}`, 14, 49);
+
+  // Summary boxes
+  const boxY = 60;
+
+  // Output VAT box
+  doc.setFillColor(239, 246, 255);
+  doc.rect(14, boxY, 88, 45, 'F');
+  doc.setDrawColor(59, 130, 246);
+  doc.rect(14, boxY, 88, 45);
+  doc.setFontSize(11);
+  doc.text('ภาษีขาย (Output VAT)', 58, boxY + 10, { align: 'center' });
+  doc.setFontSize(9);
+  doc.text(`จำนวน: ${outputItems.length} รายการ`, 20, boxY + 22);
+  const outputBase = outputItems.reduce((sum, i) => sum + i.baseAmount, 0);
+  doc.text(`ยอดขาย: ${formatCurrency(outputBase)}`, 20, boxY + 30);
+  doc.setFontSize(12);
+  doc.text(`VAT: ${formatCurrency(outputVat)}`, 20, boxY + 40);
+
+  // Input VAT box
+  doc.setFillColor(236, 253, 245);
+  doc.rect(108, boxY, 88, 45, 'F');
+  doc.setDrawColor(34, 197, 94);
+  doc.rect(108, boxY, 88, 45);
+  doc.setFontSize(11);
+  doc.text('ภาษีซื้อ (Input VAT)', 152, boxY + 10, { align: 'center' });
+  doc.setFontSize(9);
+  doc.text(`จำนวน: ${inputItems.length} รายการ`, 114, boxY + 22);
+  const inputBase = inputItems.reduce((sum, i) => sum + i.baseAmount, 0);
+  doc.text(`ยอดซื้อ: ${formatCurrency(inputBase)}`, 114, boxY + 30);
+  doc.setFontSize(12);
+  doc.text(`VAT: ${formatCurrency(inputVat)}`, 114, boxY + 40);
+
+  // Net VAT
+  const netVat = outputVat - inputVat;
+  const netY = boxY + 55;
+
+  if (netVat > 0) {
+    doc.setFillColor(254, 242, 242);
+    doc.rect(14, netY, 182, 30, 'F');
+    doc.setDrawColor(239, 68, 68);
+    doc.rect(14, netY, 182, 30);
+    doc.setTextColor(185, 28, 28);
+    doc.setFontSize(12);
+    doc.text('ภาษีที่ต้องชำระ (VAT Payable)', 105, netY + 12, { align: 'center' });
+    doc.setFontSize(16);
+    doc.text(`${formatCurrency(netVat)} บาท`, 105, netY + 24, { align: 'center' });
+  } else {
+    doc.setFillColor(236, 253, 245);
+    doc.rect(14, netY, 182, 30, 'F');
+    doc.setDrawColor(34, 197, 94);
+    doc.rect(14, netY, 182, 30);
+    doc.setTextColor(22, 101, 52);
+    doc.setFontSize(12);
+    doc.text('ภาษีที่ชำระเกิน (VAT Refundable)', 105, netY + 12, { align: 'center' });
+    doc.setFontSize(16);
+    doc.text(`${formatCurrency(Math.abs(netVat))} บาท`, 105, netY + 24, { align: 'center' });
+  }
+
+  doc.setTextColor(0, 0, 0);
+
+  // Instructions
+  doc.setFontSize(9);
+  const instructY = netY + 45;
+  doc.text('หมายเหตุ:', 14, instructY);
+  doc.text('- กำหนดยื่นแบบ ภ.พ.30 ภายในวันที่ 15 ของเดือนถัดไป', 20, instructY + 8);
+  doc.text('- หากยื่นผ่านอินเทอร์เน็ต ขยายเวลาถึงวันที่ 23 ของเดือนถัดไป', 20, instructY + 16);
+  if (netVat > 0) {
+    doc.text(`- ชำระภาษีจำนวน ${formatCurrency(netVat)} บาท ที่ธนาคารหรือสรรพากรพื้นที่`, 20, instructY + 24);
+  }
+
+  // Footer
+  doc.setFontSize(8);
+  doc.text(`พิมพ์จาก WE Accounting & Tax AI - ${formatThaiDate(new Date())}`, 105, 280, { align: 'center' });
+
+  // Save
+  const filename = `PP30_Summary_${formData.period.replace(/\s/g, '_')}.pdf`;
+  doc.save(filename);
+};
+
+// ===========================================
+// LEGACY FUNCTIONS (Browser Print)
+// ===========================================
 
 /**
  * Generate printable HTML document

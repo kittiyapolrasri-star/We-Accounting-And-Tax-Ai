@@ -1,4 +1,128 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+
+// ==================================
+// CURSOR-BASED PAGINATION (Firestore)
+// ==================================
+
+export interface CursorPaginationOptions<T> {
+  pageSize?: number;
+  fetchFn: (cursor?: string, pageSize?: number) => Promise<{
+    data: T[];
+    nextCursor?: string;
+    hasMore: boolean;
+  }>;
+}
+
+export interface CursorPaginationResult<T> {
+  data: T[];
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  error: string | null;
+  hasMore: boolean;
+  loadMore: () => Promise<void>;
+  refresh: () => Promise<void>;
+}
+
+export const useCursorPagination = <T>(
+  options: CursorPaginationOptions<T>
+): CursorPaginationResult<T> => {
+  const { pageSize = 20, fetchFn } = options;
+  const [data, setData] = useState<T[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [cursor, setCursor] = useState<string | undefined>();
+
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsLoading(true);
+      setCursor(undefined);
+    } else {
+      setIsLoadingMore(true);
+    }
+    setError(null);
+
+    try {
+      const result = await fetchFn(isRefresh ? undefined : cursor, pageSize);
+
+      if (isRefresh) {
+        setData(result.data);
+      } else {
+        setData(prev => [...prev, ...result.data]);
+      }
+
+      setCursor(result.nextCursor);
+      setHasMore(result.hasMore);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [cursor, pageSize, fetchFn]);
+
+  useEffect(() => {
+    fetchData(true);
+  }, []);
+
+  const loadMore = useCallback(async () => {
+    if (!isLoadingMore && hasMore) {
+      await fetchData(false);
+    }
+  }, [isLoadingMore, hasMore, fetchData]);
+
+  const refresh = useCallback(async () => {
+    await fetchData(true);
+  }, [fetchData]);
+
+  return {
+    data,
+    isLoading,
+    isLoadingMore,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+  };
+};
+
+// ==================================
+// INFINITE SCROLL HOOK
+// ==================================
+
+export const useInfiniteScroll = (
+  callback: () => void,
+  options: { threshold?: number; enabled?: boolean } = {}
+) => {
+  const { threshold = 200, enabled = true } = options;
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          callback();
+        }
+      },
+      { rootMargin: `${threshold}px` }
+    );
+
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [callback, threshold, enabled]);
+
+  return sentinelRef;
+};
+
+// ==================================
+// OFFSET-BASED PAGINATION (Original)
+// ==================================
 
 interface PaginationState {
   currentPage: number;
