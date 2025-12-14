@@ -261,8 +261,21 @@ export interface ActivityLog {
   timestamp: string; // ISO String
   user_id: string;
   user_name: string;
-  action: 'UPLOAD' | 'APPROVE' | 'POST_GL' | 'CLOSE_PERIOD' | 'LOGIN' | 'RECONCILE' | 'ADD_ASSET';
+  action: 'UPLOAD' | 'APPROVE' | 'POST_GL' | 'CLOSE_PERIOD' | 'LOGIN' | 'RECONCILE' | 'ADD_ASSET' | 'CREATE_TASK' | 'UPDATE_TASK' | 'DELETE_TASK';
   details: string;
   entity_id?: string; // Link to specific object
   status?: 'success' | 'warning' | 'error';
+}
+
+// Authentication User Type
+export interface AuthUser {
+  uid: string;
+  staffId: string;
+  email: string;
+  displayName: string;
+  avatar?: string;
+  role: StaffRole;
+  assignedClients?: string[];
+  createdAt?: string;
+  lastLogin?: string;
 }

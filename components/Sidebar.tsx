@@ -98,7 +98,10 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
       label: 'การเงิน & ภาษี',
       icon: DollarSign,
       items: [
+        { id: 'tax-calendar', label: 'ปฏิทินภาษี', icon: Calendar },
         { id: 'efiling', label: 'ยื่นภาษี e-Filing', icon: Send },
+        { id: 'wht-certificates', label: 'ใบ 50 ทวิ (WHT)', icon: FileText },
+        { id: 'vat-returns', label: 'ภ.พ.30 (VAT)', icon: FileText },
         { id: 'reports', label: 'รายงานภาษี & ปิดงบ', icon: PieChart },
         { id: 'payroll', label: 'เงินเดือน', icon: DollarSign },
         { id: 'cash-flow', label: 'งบกระแสเงินสด', icon: RefreshCw },

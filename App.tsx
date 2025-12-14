@@ -31,6 +31,11 @@ import SmartDashboard from './components/SmartDashboard';
 import TaskBoard from './components/TaskBoard';
 import StaffWorkloadDashboard from './components/StaffWorkloadDashboard';
 import AIAgentsPage from './components/AIAgentsPage';
+import TaskDetailModal from './components/TaskDetailModal';
+import TaxCalendar from './components/TaxCalendar';
+import WHTCertificateManager from './components/WHTCertificateManager';
+import VATReturnManager from './components/VATReturnManager';
+import BankImport from './components/BankImport';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Main App Content (requires authentication)
@@ -711,7 +716,7 @@ const AppContent: React.FC = () => {
     };
     setTasks((prev: Task[]) => [newTask, ...prev]);
     showNotification('สร้างงานใหม่สำเร็จ', 'success');
-    await logAction('APPROVE', `Created task: ${newTask.title}`);
+    await logAction('CREATE_TASK', `Created task: ${newTask.title}`);
   };
 
   const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
@@ -730,7 +735,7 @@ const AppContent: React.FC = () => {
     setTasks((prev: Task[]) => prev.filter((t: Task) => t.id !== taskId));
     showNotification('ลบงานสำเร็จ', 'success');
     if (task) {
-      await logAction('APPROVE', `Deleted task: ${task.title}`);
+      await logAction('DELETE_TASK', `Deleted task: ${task.title}`);
     }
   };
 
@@ -982,6 +987,30 @@ const AppContent: React.FC = () => {
             />;
         case 'ai-agents':
             return <AIAgentsPage />;
+        case 'tax-calendar':
+            return <TaxCalendar
+                clients={clients}
+                documents={documents}
+                onSelectClient={(clientId) => {
+                    setSelectedClientId(clientId);
+                    setCurrentView('client-detail');
+                }}
+            />;
+        case 'wht-certificates':
+            return <WHTCertificateManager
+                clients={clients}
+                documents={documents}
+                selectedClientId={selectedClientId}
+                onShowNotification={showNotification}
+            />;
+        case 'vat-returns':
+            return <VATReturnManager
+                clients={clients}
+                documents={documents}
+                glEntries={glEntries}
+                selectedClientId={selectedClientId}
+                onShowNotification={showNotification}
+            />;
         case 'reports':
             // SYSTEMATIC: Pass GL entries to global reporting view
             return <TaxReporting
@@ -1006,6 +1035,27 @@ const AppContent: React.FC = () => {
               {notification.type === 'success' ? <CheckCircle2 size={20} className="text-emerald-500" /> : <AlertCircle size={20} className="text-red-500" />}
               <span className="font-semibold text-sm">{notification.message}</span>
           </div>
+      )}
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+          <TaskDetailModal
+              task={selectedTask}
+              staff={staff}
+              onClose={() => setSelectedTask(null)}
+              onUpdate={(updates) => {
+                  handleUpdateTask(selectedTask.id, updates);
+                  setSelectedTask(prev => prev ? { ...prev, ...updates } : null);
+              }}
+              onDelete={() => {
+                  handleDeleteTask(selectedTask.id);
+                  setSelectedTask(null);
+              }}
+              currentUser={{
+                  id: CURRENT_USER_ID,
+                  name: CURRENT_USER_NAME
+              }}
+          />
       )}
 
       {/* Conditionally render sidebar based on view */}
