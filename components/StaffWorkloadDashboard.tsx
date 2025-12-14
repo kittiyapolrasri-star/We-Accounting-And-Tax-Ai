@@ -102,32 +102,32 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
   }, [tasks, workloads, staff]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <Users className="text-white" size={20} />
+              <div className="p-3 bg-purple-100 rounded-xl">
+                <Users className="text-purple-600" size={28} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Team Workload</h1>
-                <p className="text-sm text-gray-500">ภาพรวมงานและประสิทธิภาพของทีม</p>
+                <h1 className="text-2xl font-bold text-slate-900">Team Workload</h1>
+                <p className="text-sm text-slate-500">ภาพรวมงานและประสิทธิภาพของทีม</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               {/* Period Selector */}
-              <div className="flex bg-gray-100 rounded-lg p-1">
+              <div className="flex bg-slate-100 rounded-lg p-1">
                 {(['day', 'week', 'month'] as const).map((period) => (
                   <button
                     key={period}
                     onClick={() => setSelectedPeriod(period)}
                     className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                       selectedPeriod === period
-                        ? 'bg-white shadow-sm text-gray-900'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white shadow-sm text-slate-900'
+                        : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     {period === 'day' ? 'วันนี้' : period === 'week' ? 'สัปดาห์' : 'เดือน'}
@@ -192,8 +192,8 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
         {/* View Toggle & Sort */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-gray-900">สมาชิกทีม</h2>
-            <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            <h2 className="text-lg font-semibold text-slate-900">สมาชิกทีม</h2>
+            <span className="text-sm text-slate-500 bg-slate-100 px-2 py-1 rounded">
               {staff.length} คน
             </span>
           </div>
@@ -203,7 +203,7 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="workload">เรียงตาม Workload</option>
               <option value="performance">เรียงตาม Performance</option>
@@ -211,16 +211,16 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
             </select>
 
             {/* View Mode */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-slate-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('cards')}
-                className={`p-2 rounded ${viewMode === 'cards' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                className={`p-2 rounded ${viewMode === 'cards' ? 'bg-white shadow-sm' : 'hover:bg-slate-200'}`}
               >
                 <BarChart3 size={18} />
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-2 rounded ${viewMode === 'table' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'}`}
+                className={`p-2 rounded ${viewMode === 'table' ? 'bg-white shadow-sm' : 'hover:bg-slate-200'}`}
               >
                 <Users size={18} />
               </button>
@@ -244,36 +244,36 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
 
         {/* Staff Table View */}
         {viewMode === 'table' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-600">สมาชิก</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-600">Workload</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-600">งาน</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-600">SLA</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-600">สัปดาห์นี้</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-600">สถานะ</th>
-                  <th className="text-left px-6 py-3 text-sm font-medium text-gray-600"></th>
+                <tr className="bg-slate-50 border-b">
+                  <th className="text-left px-6 py-3 text-sm font-medium text-slate-600">สมาชิก</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-slate-600">Workload</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-slate-600">งาน</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-slate-600">SLA</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-slate-600">สัปดาห์นี้</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-slate-600">สถานะ</th>
+                  <th className="text-left px-6 py-3 text-sm font-medium text-slate-600"></th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {sortedWorkloads.map((workload) => (
-                  <tr key={workload.staffId} className="hover:bg-gray-50">
+                  <tr key={workload.staffId} className="hover:bg-slate-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-medium">
                           {workload.staffName.charAt(0)}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900">{workload.staffName}</div>
-                          <div className="text-sm text-gray-500">{workload.role}</div>
+                          <div className="font-medium text-slate-900">{workload.staffName}</div>
+                          <div className="text-sm text-slate-500">{workload.role}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
                               workload.utilizationPercent > 80
@@ -285,14 +285,14 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
                             style={{ width: `${Math.min(100, workload.utilizationPercent)}%` }}
                           />
                         </div>
-                        <span className="text-sm text-gray-600">{workload.utilizationPercent}%</span>
+                        <span className="text-sm text-slate-600">{workload.utilizationPercent}%</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-sm">
-                        <span className="text-gray-900">{workload.currentLoad}</span>
-                        <span className="text-gray-400">/</span>
-                        <span className="text-gray-500">{workload.maxCapacity}</span>
+                        <span className="text-slate-900">{workload.currentLoad}</span>
+                        <span className="text-slate-400">/</span>
+                        <span className="text-slate-500">{workload.maxCapacity}</span>
                         {workload.overdueItems > 0 && (
                           <span className="ml-2 px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-xs">
                             {workload.overdueItems} เกิน
@@ -316,7 +316,7 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-slate-600">
                         {workload.completedThisWeek} เสร็จ
                       </span>
                     </td>
@@ -337,14 +337,14 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => onViewStaffTasks(workload.staffId)}
-                          className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
+                          className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600"
                           title="ดูงาน"
                         >
                           <ChevronRight size={18} />
                         </button>
                         <button
                           onClick={() => onAssignTask(workload.staffId)}
-                          className="p-2 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
+                          className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600"
                           title="มอบหมายงาน"
                         >
                           <Plus size={18} />
@@ -361,8 +361,8 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
         {/* Task Distribution Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
           {/* Task by Status */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">งานตามสถานะ</h3>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">งานตามสถานะ</h3>
             <div className="space-y-4">
               {Object.entries(teamStats.byStatus || {})
                 .filter(([, count]) => (count as number) > 0)
@@ -374,11 +374,11 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
                         className="w-3 h-3 rounded-full"
                         style={{ backgroundColor: TASK_STATUS_COLORS[status as TaskStatus] }}
                       />
-                      <span className="flex-1 text-sm text-gray-600">
+                      <span className="flex-1 text-sm text-slate-600">
                         {TASK_STATUS_LABELS[status as TaskStatus]}
                       </span>
                       <div className="flex items-center gap-3">
-                        <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full"
                             style={{
@@ -387,7 +387,7 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
                             }}
                           />
                         </div>
-                        <span className="text-sm font-medium text-gray-900 w-8 text-right">
+                        <span className="text-sm font-medium text-slate-900 w-8 text-right">
                           {countNum}
                         </span>
                       </div>
@@ -398,8 +398,8 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
           </div>
 
           {/* Task by Priority */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">งานตามความสำคัญ</h3>
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">งานตามความสำคัญ</h3>
             <div className="space-y-4">
               {Object.entries(teamStats.byPriority || {}).map(([priority, count]) => {
                 const countNum = count as number;
@@ -409,7 +409,7 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: TASK_PRIORITY_COLORS[priority as TaskPriority] }}
                     />
-                    <span className="flex-1 text-sm text-gray-600">
+                    <span className="flex-1 text-sm text-slate-600">
                       {priority === 'urgent'
                         ? 'เร่งด่วนมาก'
                         : priority === 'high'
@@ -419,7 +419,7 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
                         : 'ไม่เร่งด่วน'}
                     </span>
                     <div className="flex items-center gap-3">
-                      <div className="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full"
                           style={{
@@ -428,7 +428,7 @@ const StaffWorkloadDashboard: React.FC<StaffWorkloadDashboardProps> = ({
                           }}
                         />
                       </div>
-                      <span className="text-sm font-medium text-gray-900 w-8 text-right">
+                      <span className="text-sm font-medium text-slate-900 w-8 text-right">
                         {countNum}
                       </span>
                     </div>
@@ -480,7 +480,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
         {trend !== null && (
           <div
             className={`flex items-center gap-1 text-sm ${
-              trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : 'text-gray-500'
+              trend > 0 ? 'text-green-600' : trend < 0 ? 'text-red-600' : 'text-slate-500'
             }`}
           >
             {trend > 0 ? (
@@ -494,9 +494,9 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
           </div>
         )}
       </div>
-      <div className="text-2xl font-bold text-gray-900 mb-1">{value}</div>
-      <div className="text-sm text-gray-600">{label}</div>
-      <div className="text-xs text-gray-500 mt-1">{subValue}</div>
+      <div className="text-2xl font-bold text-slate-900 mb-1">{value}</div>
+      <div className="text-sm text-slate-600">{label}</div>
+      <div className="text-xs text-slate-500 mt-1">{subValue}</div>
     </div>
   );
 };
@@ -517,17 +517,17 @@ const StaffCard: React.FC<StaffCardProps> = ({ workload, onAssign, onViewTasks }
       : 'green';
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
       {/* Header */}
-      <div className="p-5 border-b border-gray-100">
+      <div className="p-5 border-b border-slate-100">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-lg font-semibold">
               {workload.staffName.charAt(0)}
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">{workload.staffName}</h3>
-              <p className="text-sm text-gray-500">{workload.role}</p>
+              <h3 className="font-semibold text-slate-900">{workload.staffName}</h3>
+              <p className="text-sm text-slate-500">{workload.role}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -547,9 +547,9 @@ const StaffCard: React.FC<StaffCardProps> = ({ workload, onAssign, onViewTasks }
       </div>
 
       {/* Workload Meter */}
-      <div className="px-5 py-4 bg-gray-50">
+      <div className="px-5 py-4 bg-slate-50">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-gray-600">Workload</span>
+          <span className="text-sm text-slate-600">Workload</span>
           <span
             className={`text-sm font-semibold ${
               utilizationColor === 'red'
@@ -562,7 +562,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ workload, onAssign, onViewTasks }
             {workload.utilizationPercent}%
           </span>
         </div>
-        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-3 bg-slate-200 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all ${
               utilizationColor === 'red'
@@ -574,7 +574,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ workload, onAssign, onViewTasks }
             style={{ width: `${Math.min(100, workload.utilizationPercent)}%` }}
           />
         </div>
-        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+        <div className="flex items-center justify-between mt-2 text-xs text-slate-500">
           <span>
             {workload.currentLoad} / {workload.maxCapacity} งาน
           </span>
@@ -586,10 +586,10 @@ const StaffCard: React.FC<StaffCardProps> = ({ workload, onAssign, onViewTasks }
       <div className="px-5 py-4">
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="text-center">
-            <div className="text-lg font-semibold text-gray-900">{workload.completedThisWeek}</div>
-            <div className="text-xs text-gray-500">เสร็จสัปดาห์นี้</div>
+            <div className="text-lg font-semibold text-slate-900">{workload.completedThisWeek}</div>
+            <div className="text-xs text-slate-500">เสร็จสัปดาห์นี้</div>
           </div>
-          <div className="text-center border-x border-gray-100">
+          <div className="text-center border-x border-slate-100">
             <div
               className={`text-lg font-semibold ${
                 workload.slaCompliance >= 90
@@ -601,17 +601,17 @@ const StaffCard: React.FC<StaffCardProps> = ({ workload, onAssign, onViewTasks }
             >
               {workload.slaCompliance}%
             </div>
-            <div className="text-xs text-gray-500">SLA</div>
+            <div className="text-xs text-slate-500">SLA</div>
           </div>
           <div className="text-center">
             <div
               className={`text-lg font-semibold ${
-                workload.overdueItems > 0 ? 'text-red-600' : 'text-gray-900'
+                workload.overdueItems > 0 ? 'text-red-600' : 'text-slate-900'
               }`}
             >
               {workload.overdueItems}
             </div>
-            <div className="text-xs text-gray-500">เกินกำหนด</div>
+            <div className="text-xs text-slate-500">เกินกำหนด</div>
           </div>
         </div>
 
@@ -636,7 +636,7 @@ const StaffCard: React.FC<StaffCardProps> = ({ workload, onAssign, onViewTasks }
         <div className="flex items-center gap-2">
           <button
             onClick={onViewTasks}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors"
           >
             <Briefcase size={16} />
             ดูงาน

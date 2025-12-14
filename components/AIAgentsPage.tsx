@@ -65,12 +65,12 @@ const AIAgentsPage: React.FC<Props> = ({ onConfigureAgent }) => {
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-purple-100 rounded-xl">
+        <div className="flex items-center gap-4 mb-2">
+          <div className="p-3 bg-purple-100 rounded-xl">
             <Bot size={28} className="text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">AI Agents</h1>
+            <h1 className="text-2xl font-bold text-slate-900">AI Agents</h1>
             <p className="text-slate-500 text-sm">ระบบ AI Agent อัจฉริยะสำหรับงานบัญชี</p>
           </div>
         </div>

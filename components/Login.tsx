@@ -71,8 +71,8 @@ const Login: React.FC<Props> = ({ onLoginSuccess }) => {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Mail className="text-green-600" size={32} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">ส่งอีเมลเรียบร้อย</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">ส่งอีเมลเรียบร้อย</h2>
+          <p className="text-slate-600 mb-6">
             กรุณาตรวจสอบอีเมล {email} เพื่อรีเซ็ตรหัสผ่าน
           </p>
           <button
@@ -97,8 +97,8 @@ const Login: React.FC<Props> = ({ onLoginSuccess }) => {
           <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-white font-bold text-2xl">WE</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">WE Accounting & Tax AI</h1>
-          <p className="text-gray-500 mt-2">
+          <h1 className="text-2xl font-bold text-slate-800">WE Accounting & Tax AI</h1>
+          <p className="text-slate-500 mt-2">
             {resetMode ? 'รีเซ็ตรหัสผ่าน' : 'เข้าสู่ระบบสำนักงานบัญชี'}
           </p>
         </div>
@@ -115,17 +115,17 @@ const Login: React.FC<Props> = ({ onLoginSuccess }) => {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               อีเมล
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                 disabled={loading}
               />
             </div>
@@ -134,23 +134,23 @@ const Login: React.FC<Props> = ({ onLoginSuccess }) => {
           {/* Password */}
           {!resetMode && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 รหัสผ่าน
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full pl-10 pr-12 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                   disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -196,15 +196,15 @@ const Login: React.FC<Props> = ({ onLoginSuccess }) => {
               setResetMode(false);
               setError('');
             }}
-            className="w-full text-center text-gray-600 hover:text-gray-800 mt-4"
+            className="w-full text-center text-slate-600 hover:text-slate-800 mt-4"
           >
             กลับไปหน้าเข้าสู่ระบบ
           </button>
         )}
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-gray-200 text-center">
-          <p className="text-xs text-gray-500">
+        <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+          <p className="text-xs text-slate-500">
             WE Accounting & Tax AI v1.0
             <br />
             ระบบสำนักงานบัญชีอัตโนมัติ

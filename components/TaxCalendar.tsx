@@ -270,14 +270,16 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Calendar className="text-blue-600" size={24} />
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-100 rounded-xl">
+              <Calendar className="text-blue-600" size={28} />
+            </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">
-                ปฏิทินภาษี / Tax Calendar
-              </h2>
-              <p className="text-sm text-gray-500">
-                กำหนดยื่นภาษีของลูกค้าทั้งหมด
+              <h1 className="text-2xl font-bold text-slate-900">
+                ปฏิทินภาษี
+              </h1>
+              <p className="text-sm text-slate-500">
+                Tax Calendar - กำหนดยื่นภาษีของลูกค้าทั้งหมด
               </p>
             </div>
           </div>
@@ -286,7 +288,7 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
           <div className="flex items-center gap-2">
             <button
               onClick={prevMonth}
-              className="p-2 hover:bg-gray-100 rounded"
+              className="p-2 hover:bg-slate-100 rounded"
             >
               <ChevronLeft size={20} />
             </button>
@@ -295,7 +297,7 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
             </span>
             <button
               onClick={nextMonth}
-              className="p-2 hover:bg-gray-100 rounded"
+              className="p-2 hover:bg-slate-100 rounded"
             >
               <ChevronRight size={20} />
             </button>
@@ -304,9 +306,9 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
 
         {/* Summary Stats */}
         <div className="grid grid-cols-5 gap-3 mb-4">
-          <div className="bg-gray-50 p-3 rounded-lg text-center">
-            <div className="text-2xl font-bold text-gray-700">{stats.total}</div>
-            <div className="text-xs text-gray-500">ทั้งหมด</div>
+          <div className="bg-slate-50 p-3 rounded-lg text-center">
+            <div className="text-2xl font-bold text-slate-700">{stats.total}</div>
+            <div className="text-xs text-slate-500">ทั้งหมด</div>
           </div>
           <div className="bg-red-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
@@ -328,7 +330,7 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
 
         {/* Filters */}
         <div className="flex items-center gap-2">
-          <Filter size={16} className="text-gray-400" />
+          <Filter size={16} className="text-slate-400" />
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
@@ -344,13 +346,13 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
           <div className="ml-auto flex gap-1">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1 text-sm rounded ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}
+              className={`px-3 py-1 text-sm rounded ${viewMode === 'list' ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-slate-100'}`}
             >
               รายการ
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-3 py-1 text-sm rounded ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}
+              className={`px-3 py-1 text-sm rounded ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-slate-100'}`}
             >
               ปฏิทิน
             </button>
@@ -362,14 +364,14 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
       {viewMode === 'list' ? (
         <div className="divide-y max-h-[500px] overflow-y-auto">
           {clientDeadlines.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-slate-500">
               ไม่มีกำหนดยื่นภาษีในเดือนนี้
             </div>
           ) : (
             clientDeadlines.map((item, index) => (
               <div
                 key={`${item.clientId}-${item.deadline.type}-${index}`}
-                className={`p-3 hover:bg-gray-50 cursor-pointer ${
+                className={`p-3 hover:bg-slate-50 cursor-pointer ${
                   item.status === 'overdue' ? 'bg-red-50' :
                   item.status === 'due_soon' ? 'bg-yellow-50' : ''
                 }`}
@@ -381,14 +383,14 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
                       <Building2 size={18} className="text-blue-600" />
                     </div>
                     <div>
-                      <div className="font-medium text-gray-800">{item.clientName}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="font-medium text-slate-800">{item.clientName}</div>
+                      <div className="text-sm text-slate-500">
                         {item.deadline.nameTh}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-medium text-gray-700">
+                    <div className="text-sm font-medium text-slate-700">
                       {item.dueDate.getDate()} {getThaiMonthName(item.dueDate).split(' ')[0]}
                     </div>
                     <StatusBadge status={item.status} />
@@ -409,7 +411,7 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
           <div className="grid grid-cols-7 gap-1">
             {/* Day headers */}
             {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(day => (
-              <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+              <div key={day} className="text-center text-sm font-medium text-slate-500 py-2">
                 {day}
               </div>
             ))}
@@ -424,7 +426,7 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
 
               // Empty cells before first day
               for (let i = 0; i < firstDay; i++) {
-                days.push(<div key={`empty-${i}`} className="h-20 bg-gray-50" />);
+                days.push(<div key={`empty-${i}`} className="h-20 bg-slate-50" />);
               }
 
               // Day cells
@@ -442,7 +444,7 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
                       dayDeadlines.length > 0 ? 'bg-blue-50 border-blue-200' : ''
                     }`}
                   >
-                    <div className="font-medium text-gray-700">{day}</div>
+                    <div className="font-medium text-slate-700">{day}</div>
                     {dayDeadlines.length > 0 && (
                       <div className="text-xs mt-1">
                         <span className={`${hasOverdue ? 'text-red-600' : hasDueSoon ? 'text-yellow-600' : 'text-blue-600'}`}>
@@ -461,9 +463,9 @@ const TaxCalendar: React.FC<TaxCalendarProps> = ({ clients, documents, onSelectC
       )}
 
       {/* Quick Reference */}
-      <div className="p-4 bg-gray-50 border-t">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">กำหนดยื่นภาษีประจำ</h3>
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+      <div className="p-4 bg-slate-50 border-t">
+        <h3 className="text-sm font-medium text-slate-700 mb-2">กำหนดยื่นภาษีประจำ</h3>
+        <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
           <div>• ภ.พ.30 (VAT): ทุกวันที่ 15 ของเดือนถัดไป</div>
           <div>• ภ.ง.ด.3/53 (WHT): ทุกวันที่ 7 ของเดือนถัดไป</div>
           <div>• ประกันสังคม: ทุกวันที่ 15 ของเดือนถัดไป</div>

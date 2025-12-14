@@ -43,9 +43,9 @@ const Pagination: React.FC<PaginationProps> = ({
   if (totalItems === 0) return null;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3 px-4 bg-white border-t border-gray-200">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3 px-4 bg-white border-t border-slate-200">
       {/* Info */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-slate-600">
         แสดง <span className="font-medium">{startIndex}</span> -{' '}
         <span className="font-medium">{endIndex}</span> จาก{' '}
         <span className="font-medium">{totalItems}</span> รายการ
@@ -56,11 +56,11 @@ const Pagination: React.FC<PaginationProps> = ({
         {/* Page Size Selector */}
         {showPageSizeSelector && onPageSizeChange && (
           <div className="flex items-center gap-2 mr-4">
-            <label className="text-sm text-gray-600">แสดง:</label>
+            <label className="text-sm text-slate-600">แสดง:</label>
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="border border-slate-300 rounded-md px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               {pageSizeOptions.map((size) => (
                 <option key={size} value={size}>
@@ -78,7 +78,7 @@ const Pagination: React.FC<PaginationProps> = ({
             <button
               onClick={firstPage}
               disabled={!hasPrevPage}
-              className="p-1.5 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-md border border-slate-300 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="หน้าแรก"
             >
               <ChevronsLeft size={18} />
@@ -89,7 +89,7 @@ const Pagination: React.FC<PaginationProps> = ({
           <button
             onClick={prevPage}
             disabled={!hasPrevPage}
-            className="p-1.5 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md border border-slate-300 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="หน้าก่อนหน้า"
           >
             <ChevronLeft size={18} />
@@ -101,12 +101,12 @@ const Pagination: React.FC<PaginationProps> = ({
               <>
                 <button
                   onClick={() => goToPage(1)}
-                  className="px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-100 text-sm transition-colors"
+                  className="px-3 py-1.5 rounded-md border border-slate-300 hover:bg-slate-100 text-sm transition-colors"
                 >
                   1
                 </button>
                 {pageNumbers[0] > 2 && (
-                  <span className="px-2 text-gray-400">...</span>
+                  <span className="px-2 text-slate-400">...</span>
                 )}
               </>
             )}
@@ -118,7 +118,7 @@ const Pagination: React.FC<PaginationProps> = ({
                 className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
                   page === currentPage
                     ? 'bg-blue-600 text-white border border-blue-600'
-                    : 'border border-gray-300 hover:bg-gray-100'
+                    : 'border border-slate-300 hover:bg-slate-100'
                 }`}
               >
                 {page}
@@ -128,11 +128,11 @@ const Pagination: React.FC<PaginationProps> = ({
             {pageNumbers[pageNumbers.length - 1] < totalPages && (
               <>
                 {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
-                  <span className="px-2 text-gray-400">...</span>
+                  <span className="px-2 text-slate-400">...</span>
                 )}
                 <button
                   onClick={() => goToPage(totalPages)}
-                  className="px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-100 text-sm transition-colors"
+                  className="px-3 py-1.5 rounded-md border border-slate-300 hover:bg-slate-100 text-sm transition-colors"
                 >
                   {totalPages}
                 </button>
@@ -144,7 +144,7 @@ const Pagination: React.FC<PaginationProps> = ({
           <button
             onClick={nextPage}
             disabled={!hasNextPage}
-            className="p-1.5 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-1.5 rounded-md border border-slate-300 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title="หน้าถัดไป"
           >
             <ChevronRight size={18} />
@@ -155,7 +155,7 @@ const Pagination: React.FC<PaginationProps> = ({
             <button
               onClick={lastPage}
               disabled={!hasNextPage}
-              className="p-1.5 rounded-md border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-md border border-slate-300 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="หน้าสุดท้าย"
             >
               <ChevronsRight size={18} />

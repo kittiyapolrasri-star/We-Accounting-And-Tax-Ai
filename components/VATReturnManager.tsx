@@ -202,13 +202,15 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Calculator className="text-green-600" size={24} />
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-emerald-100 rounded-xl">
+              <Calculator className="text-emerald-600" size={28} />
+            </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">
+              <h1 className="text-2xl font-bold text-slate-900">
                 แบบแสดงรายการภาษีมูลค่าเพิ่ม (ภ.พ.30)
-              </h2>
-              <p className="text-sm text-gray-500">
+              </h1>
+              <p className="text-sm text-slate-500">
                 VAT Return Form PP30
               </p>
             </div>
@@ -234,8 +236,8 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
             <div className="flex flex-wrap items-center gap-4 mb-4">
               {/* Month selector */}
               <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-gray-400" />
-                <label className="text-sm text-gray-600">เดือนภาษี:</label>
+                <Calendar size={16} className="text-slate-400" />
+                <label className="text-sm text-slate-600">เดือนภาษี:</label>
                 <input
                   type="month"
                   value={selectedMonth}
@@ -249,8 +251,8 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
 
               {/* Carry forward credit */}
               <div className="flex items-center gap-2">
-                <TrendingDown size={16} className="text-gray-400" />
-                <label className="text-sm text-gray-600">ยกมา:</label>
+                <TrendingDown size={16} className="text-slate-400" />
+                <label className="text-sm text-slate-600">ยกมา:</label>
                 <input
                   type="number"
                   value={carryForwardCredit}
@@ -261,14 +263,14 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
                   className="border rounded px-2 py-1 text-sm w-32 text-right"
                   placeholder="0.00"
                 />
-                <span className="text-sm text-gray-500">บาท</span>
+                <span className="text-sm text-slate-500">บาท</span>
               </div>
 
               {/* Generate button */}
               <button
                 onClick={handleGeneratePP30}
                 disabled={isCalculating || clientDocuments.length === 0}
-                className="ml-auto px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300 flex items-center gap-2"
+                className="ml-auto px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-slate-300 flex items-center gap-2"
               >
                 {isCalculating ? (
                   <>
@@ -285,8 +287,8 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
             </div>
 
             {/* VAT Summary Preview */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">
+            <div className="bg-slate-50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-slate-700 mb-3">
                 สรุป VAT ประจำเดือน {getThaiMonthYear(selectedMonth)}
               </h3>
 
@@ -295,18 +297,18 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
                 <div className="bg-white rounded-lg p-4 border">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp size={18} className="text-blue-500" />
-                    <span className="font-medium text-gray-700">ภาษีขาย (Output VAT)</span>
+                    <span className="font-medium text-slate-700">ภาษีขาย (Output VAT)</span>
                   </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">ยอดขาย:</span>
+                      <span className="text-slate-500">ยอดขาย:</span>
                       <span>{formatCurrency(vatSummary.salesAmount)} บาท</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">ภาษีขาย:</span>
+                      <span className="text-slate-500">ภาษีขาย:</span>
                       <span className="font-medium text-blue-600">{formatCurrency(vatSummary.outputVAT)} บาท</span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-400">
+                    <div className="flex justify-between text-xs text-slate-400">
                       <span>จำนวนใบกำกับ:</span>
                       <span>{vatSummary.salesInvoiceCount} ฉบับ</span>
                     </div>
@@ -317,18 +319,18 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
                 <div className="bg-white rounded-lg p-4 border">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingDown size={18} className="text-green-500" />
-                    <span className="font-medium text-gray-700">ภาษีซื้อ (Input VAT)</span>
+                    <span className="font-medium text-slate-700">ภาษีซื้อ (Input VAT)</span>
                   </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">ยอดซื้อ:</span>
+                      <span className="text-slate-500">ยอดซื้อ:</span>
                       <span>{formatCurrency(vatSummary.purchaseAmount)} บาท</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">ภาษีซื้อ:</span>
+                      <span className="text-slate-500">ภาษีซื้อ:</span>
                       <span className="font-medium text-green-600">{formatCurrency(vatSummary.inputVAT)} บาท</span>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-400">
+                    <div className="flex justify-between text-xs text-slate-400">
                       <span>จำนวนใบกำกับ:</span>
                       <span>{vatSummary.purchaseInvoiceCount} ฉบับ</span>
                     </div>
@@ -340,26 +342,26 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
               <div className="bg-white rounded-lg p-4 border">
                 <div className="flex items-center justify-center gap-4 text-lg">
                   <div className="text-center">
-                    <div className="text-xs text-gray-500">ภาษีขาย</div>
+                    <div className="text-xs text-slate-500">ภาษีขาย</div>
                     <div className="font-bold text-blue-600">{formatCurrency(vatSummary.outputVAT)}</div>
                   </div>
-                  <span className="text-2xl text-gray-400">-</span>
+                  <span className="text-2xl text-slate-400">-</span>
                   <div className="text-center">
-                    <div className="text-xs text-gray-500">ภาษีซื้อ</div>
+                    <div className="text-xs text-slate-500">ภาษีซื้อ</div>
                     <div className="font-bold text-green-600">{formatCurrency(vatSummary.inputVAT)}</div>
                   </div>
                   {carryForwardCredit > 0 && (
                     <>
-                      <span className="text-2xl text-gray-400">-</span>
+                      <span className="text-2xl text-slate-400">-</span>
                       <div className="text-center">
-                        <div className="text-xs text-gray-500">ยกมา</div>
+                        <div className="text-xs text-slate-500">ยกมา</div>
                         <div className="font-bold text-purple-600">{formatCurrency(carryForwardCredit)}</div>
                       </div>
                     </>
                   )}
-                  <span className="text-2xl text-gray-400">=</span>
+                  <span className="text-2xl text-slate-400">=</span>
                   <div className="text-center">
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-slate-500">
                       {vatSummary.vatToPay > 0 ? 'ต้องชำระ' : 'ขอคืน/ยกไป'}
                     </div>
                     <div className={`font-bold text-xl ${vatSummary.vatToPay > 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -386,7 +388,7 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="text-green-500" size={20} />
-              <h3 className="font-medium text-gray-700">
+              <h3 className="font-medium text-slate-700">
                 แบบ ภ.พ.30 พร้อมยื่น
               </h3>
             </div>
@@ -409,15 +411,15 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
           </div>
 
           {/* PP30 Preview */}
-          <div className="bg-gray-50 rounded-lg p-4 text-sm">
+          <div className="bg-slate-50 rounded-lg p-4 text-sm">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-gray-500">ผู้ประกอบการ</label>
+                <label className="text-xs text-slate-500">ผู้ประกอบการ</label>
                 <div className="font-medium">{pp30Data.taxpayerName}</div>
-                <div className="text-gray-500">เลขประจำตัวผู้เสียภาษี: {pp30Data.taxpayerTaxId}</div>
+                <div className="text-slate-500">เลขประจำตัวผู้เสียภาษี: {pp30Data.taxpayerTaxId}</div>
               </div>
               <div>
-                <label className="text-xs text-gray-500">เดือนภาษี</label>
+                <label className="text-xs text-slate-500">เดือนภาษี</label>
                 <div className="font-medium">
                   {pp30Data.taxPeriod.month}/{pp30Data.taxPeriod.year}
                 </div>
@@ -427,14 +429,14 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
             <table className="w-full mt-4">
               <tbody>
                 <tr className="border-b">
-                  <td className="py-2 text-gray-500">ภาษีขาย</td>
+                  <td className="py-2 text-slate-500">ภาษีขาย</td>
                   <td className="py-2 text-right font-medium">{formatCurrency(pp30Data.outputVAT.totalVAT)} บาท</td>
                 </tr>
                 <tr className="border-b">
-                  <td className="py-2 text-gray-500">ภาษีซื้อ</td>
+                  <td className="py-2 text-slate-500">ภาษีซื้อ</td>
                   <td className="py-2 text-right font-medium">{formatCurrency(pp30Data.inputVAT.totalClaimableVAT)} บาท</td>
                 </tr>
-                <tr className="border-b bg-gray-100">
+                <tr className="border-b bg-slate-100">
                   <td className="py-2 font-medium">
                     {pp30Data.calculation.vatToPay > 0 ? 'ภาษีที่ต้องชำระ' : 'ภาษีที่ขอคืน/ยกไป'}
                   </td>
@@ -447,7 +449,7 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
               </tbody>
             </table>
 
-            <div className="mt-4 text-xs text-gray-500">
+            <div className="mt-4 text-xs text-slate-500">
               <div>จำนวนใบกำกับขาย: {pp30Data.supportingDocs.salesInvoices.length} ฉบับ</div>
               <div>จำนวนใบกำกับซื้อ: {pp30Data.supportingDocs.purchaseInvoices.length} ฉบับ</div>
             </div>
@@ -457,8 +459,8 @@ const VATReturnManager: React.FC<VATReturnManagerProps> = ({
 
       {/* Empty state */}
       {selectedClient && clientDocuments.length === 0 && (
-        <div className="p-8 text-center text-gray-500">
-          <FileText size={48} className="mx-auto mb-2 text-gray-300" />
+        <div className="p-8 text-center text-slate-500">
+          <FileText size={48} className="mx-auto mb-2 text-slate-300" />
           <p>ไม่พบเอกสารสำหรับเดือน {getThaiMonthYear(selectedMonth)}</p>
         </div>
       )}
