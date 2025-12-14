@@ -1,9 +1,31 @@
-import React from 'react';
-import { LayoutDashboard, FileText, Users, Settings, PlusCircle, PieChart, Building, FilePlus, BarChart3, ChevronRight, Scale, Briefcase, Globe, DollarSign, Database, RefreshCw, Send, Zap, GitBranch, Gauge } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  LayoutDashboard, FileText, Users, Settings, PlusCircle, PieChart,
+  Building, FilePlus, BarChart3, ChevronRight, ChevronDown, Scale,
+  Briefcase, Globe, DollarSign, Database, RefreshCw, Send, Zap,
+  GitBranch, Gauge, FolderKanban, UsersRound, Calendar, Bot,
+  ClipboardList
+} from 'lucide-react';
 
 interface Props {
   activeView: string;
   onChangeView: (view: string) => void;
+  userRole?: string;
+}
+
+interface MenuItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: string;
+}
+
+interface MenuGroup {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  items: MenuItem[];
+  defaultOpen?: boolean;
 }
 
 const WeLogo = () => (
@@ -14,29 +36,107 @@ const WeLogo = () => (
   </svg>
 );
 
-const Sidebar: React.FC<Props> = ({ activeView, onChangeView }) => {
-  const menuItems = [
-    { id: 'dashboard', label: 'ภาพรวมผู้บริหาร', subLabel: 'CEO Dashboard', icon: LayoutDashboard },
-    { id: 'command-center', label: 'ศูนย์ควบคุมงาน', subLabel: 'Command Center', icon: BarChart3 },
-    { id: 'workplace', label: 'งานของฉัน', subLabel: 'My Workplace', icon: Briefcase }, // Updated Label
-    { id: 'documents', label: 'ทะเบียนเอกสาร', subLabel: 'Documents', icon: FileText },
-    { id: 'reconciliation', label: 'กระทบยอดธนาคาร', subLabel: 'Bank Recon', icon: Scale },
-    { id: 'clients', label: 'ทะเบียนลูกค้า', subLabel: 'Clients', icon: Building },
-    { id: 'master-data', label: 'ข้อมูลหลัก', subLabel: 'Master Data', icon: Database },
-    { id: 'payroll', label: 'เงินเดือน', subLabel: 'Payroll', icon: DollarSign },
-    { id: 'cash-flow', label: 'งบกระแสเงินสด', subLabel: 'Cash Flow', icon: RefreshCw },
-    { id: 'efiling', label: 'ยื่นภาษี e-Filing', subLabel: 'Tax e-Filing', icon: Send },
-    { id: 'automation', label: 'ระบบอัตโนมัติ', subLabel: 'Smart Automation', icon: Zap },
-    { id: 'workflow', label: 'ระบบอนุมัติ', subLabel: 'Workflow & Approval', icon: GitBranch },
-    { id: 'smart-dashboard', label: 'แดชบอร์ดอัจฉริยะ', subLabel: 'Smart Dashboard', icon: Gauge },
-    { id: 'reports', label: 'รายงานภาษี & ปิดงบ', subLabel: 'Tax Reports', icon: PieChart },
-    { id: 'staff', label: 'ทีมงาน', subLabel: 'Staff', icon: Users },
+const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manager' }) => {
+  // Track which groups are expanded
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    dashboard: true,
+    daily: true,
+    client: false,
+    finance: false,
+    team: false,
+    settings: false,
+  });
+
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
+
+  // Check if any item in a group is active
+  const isGroupActive = (items: MenuItem[]) => {
+    return items.some(item => item.id === activeView);
+  };
+
+  // Menu structure with groups
+  const menuGroups: MenuGroup[] = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      icon: LayoutDashboard,
+      defaultOpen: true,
+      items: [
+        { id: 'dashboard', label: 'ภาพรวมผู้บริหาร', icon: LayoutDashboard },
+        { id: 'command-center', label: 'ศูนย์ควบคุมงาน', icon: BarChart3 },
+        { id: 'smart-dashboard', label: 'แดชบอร์ดอัจฉริยะ', icon: Gauge },
+      ]
+    },
+    {
+      id: 'daily',
+      label: 'งานประจำวัน',
+      icon: ClipboardList,
+      defaultOpen: true,
+      items: [
+        { id: 'workplace', label: 'งานของฉัน', icon: Briefcase },
+        { id: 'task-board', label: 'บอร์ดงาน (Kanban)', icon: FolderKanban, badge: 'NEW' },
+        { id: 'documents', label: 'ทะเบียนเอกสาร', icon: FileText },
+        { id: 'reconciliation', label: 'กระทบยอดธนาคาร', icon: Scale },
+      ]
+    },
+    {
+      id: 'client',
+      label: 'ลูกค้า & ข้อมูล',
+      icon: Building,
+      items: [
+        { id: 'clients', label: 'ทะเบียนลูกค้า', icon: Building },
+        { id: 'master-data', label: 'ข้อมูลหลัก', icon: Database },
+      ]
+    },
+    {
+      id: 'finance',
+      label: 'การเงิน & ภาษี',
+      icon: DollarSign,
+      items: [
+        { id: 'efiling', label: 'ยื่นภาษี e-Filing', icon: Send },
+        { id: 'reports', label: 'รายงานภาษี & ปิดงบ', icon: PieChart },
+        { id: 'payroll', label: 'เงินเดือน', icon: DollarSign },
+        { id: 'cash-flow', label: 'งบกระแสเงินสด', icon: RefreshCw },
+      ]
+    },
+    {
+      id: 'team',
+      label: 'ทีมงาน & AI',
+      icon: UsersRound,
+      items: [
+        { id: 'staff', label: 'จัดการทีมงาน', icon: Users },
+        { id: 'workload', label: 'Workload Dashboard', icon: BarChart3, badge: 'NEW' },
+        { id: 'workflow', label: 'ระบบอนุมัติ', icon: GitBranch },
+      ]
+    },
+    {
+      id: 'settings',
+      label: 'ตั้งค่าระบบ',
+      icon: Settings,
+      items: [
+        { id: 'automation', label: 'ระบบอัตโนมัติ', icon: Zap },
+        { id: 'ai-agents', label: 'AI Agents', icon: Bot, badge: 'BETA' },
+      ]
+    },
   ];
+
+  // Filter menu groups based on role
+  const filteredGroups = menuGroups.filter(group => {
+    if (userRole === 'Junior Accountant' && group.id === 'settings') {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="w-64 bg-white flex flex-col h-full border-r border-slate-100 font-inter shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)] z-20">
       {/* Header Logo */}
-      <div className="h-24 flex items-center gap-4 px-6 border-b border-slate-50">
+      <div className="h-20 flex items-center gap-4 px-6 border-b border-slate-50">
         <WeLogo />
         <div className="flex flex-col justify-center">
           <span className="font-bold text-lg text-slate-800 tracking-tight leading-none">WE</span>
@@ -45,65 +145,102 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView }) => {
       </div>
 
       {/* Main Actions */}
-      <div className="p-6 space-y-3">
-        <button 
+      <div className="p-4 space-y-2">
+        <button
           onClick={() => onChangeView('upload')}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-200 hover:shadow-lg hover:shadow-blue-300 transform hover:-translate-y-0.5"
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-200 hover:shadow-lg hover:shadow-blue-300 transform hover:-translate-y-0.5"
         >
-          <PlusCircle size={20} />
+          <PlusCircle size={18} />
           <span className="text-sm font-semibold">อัปโหลดเอกสาร</span>
         </button>
-         <button 
+        <button
           onClick={() => onChangeView('manual-jv')}
-          className="w-full bg-white hover:bg-slate-50 text-slate-600 font-medium py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-slate-200 hover:border-slate-300 shadow-sm"
+          className="w-full bg-white hover:bg-slate-50 text-slate-600 font-medium py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors border border-slate-200 hover:border-slate-300 shadow-sm"
         >
-          <FilePlus size={18} />
+          <FilePlus size={16} />
           <span className="text-sm">บันทึก JV ทั่วไป</span>
         </button>
       </div>
 
-      {/* Navigation */}
-      <div className="px-4 py-2">
-        <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">เมนูหลัก (Main Menu)</p>
+      {/* Navigation - Collapsible Groups */}
+      <div className="flex-1 overflow-y-auto px-3 py-2">
         <nav className="space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeView === item.id;
+          {filteredGroups.map((group) => {
+            const GroupIcon = group.icon;
+            const isExpanded = expandedGroups[group.id];
+            const hasActiveItem = isGroupActive(group.items);
+
             return (
-              <button
-                key={item.id}
-                onClick={() => onChangeView(item.id)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group relative overflow-hidden ${
-                  isActive 
-                    ? 'bg-blue-50 text-blue-700 font-semibold' 
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                }`}
-              >
-                {isActive && <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-r-full"></div>}
-                <div className="flex items-center gap-3">
-                  <Icon size={20} className={isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'} />
-                  <div className="text-left">
-                    <span className="block text-sm">{item.label}</span>
+              <div key={group.id} className="mb-1">
+                {/* Group Header */}
+                <button
+                  onClick={() => toggleGroup(group.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
+                    hasActiveItem
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <GroupIcon size={18} className={hasActiveItem ? 'text-blue-600' : 'text-slate-400'} />
+                    <span className="text-sm font-medium">{group.label}</span>
                   </div>
-                </div>
-                {isActive && <ChevronRight size={16} className="text-blue-400" />}
-              </button>
+                  {isExpanded ? (
+                    <ChevronDown size={16} className="text-slate-400" />
+                  ) : (
+                    <ChevronRight size={16} className="text-slate-400" />
+                  )}
+                </button>
+
+                {/* Group Items */}
+                {isExpanded && (
+                  <div className="mt-1 ml-3 pl-3 border-l-2 border-slate-100 space-y-0.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeView === item.id;
+
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => onChangeView(item.id)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all group ${
+                            isActive
+                              ? 'bg-blue-100 text-blue-700 font-medium'
+                              : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Icon size={16} className={isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-500'} />
+                            <span className="text-sm">{item.label}</span>
+                          </div>
+                          {item.badge && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              item.badge === 'NEW'
+                                ? 'bg-green-100 text-green-600'
+                                : 'bg-purple-100 text-purple-600'
+                            }`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
       </div>
 
-      <div className="mt-auto p-6 border-t border-slate-50 space-y-2">
-        <button 
-            onClick={() => onChangeView('client-portal')}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
+      {/* Footer */}
+      <div className="p-4 border-t border-slate-50 space-y-2">
+        <button
+          onClick={() => onChangeView('client-portal')}
+          className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200"
         >
-          <Globe size={18} />
-          <span>Client Portal (Demo)</span>
-        </button>
-        <button className="w-full flex items-center gap-3 px-2 py-2 text-sm text-slate-500 hover:text-slate-800 transition-colors">
-          <Settings size={20} />
-          <span>ตั้งค่าระบบ (Settings)</span>
+          <Globe size={16} />
+          <span>Client Portal</span>
         </button>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { isFirebaseConfigured } from './services/firebase';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import Login from './components/Login';
 import { AnalysisState, DocumentRecord, Staff, AccountingResponse, Client, IssueTicket, VendorRule, PostedGLEntry, PublishedReport, FixedAsset, WorkflowStatus, ActivityLog } from './types';
+import { Task, TaskStatus } from './types/tasks';
 import AnalysisResult from './components/AnalysisResult';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -27,6 +28,9 @@ import TaxEfiling from './components/TaxEfiling';
 import AutomationDashboard from './components/AutomationDashboard';
 import WorkflowDashboard from './components/WorkflowDashboard';
 import SmartDashboard from './components/SmartDashboard';
+import TaskBoard from './components/TaskBoard';
+import StaffWorkloadDashboard from './components/StaffWorkloadDashboard';
+import AIAgentsPage from './components/AIAgentsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Main App Content (requires authentication)
@@ -44,6 +48,10 @@ const AppContent: React.FC = () => {
   // SYSTEMATIC: Load GL globally for Reporting
   const [glEntries, setGlEntries] = useState<PostedGLEntry[]>([]);
   const [fixedAssets, setFixedAssets] = useState<FixedAsset[]>([]);
+
+  // Task Management State
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const [loadingApp, setLoadingApp] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -670,6 +678,83 @@ const AppContent: React.FC = () => {
       setVendorRules(newRules);
   };
 
+  // --- TASK MANAGEMENT HANDLERS ---
+  const handleCreateTask = async (data: Partial<Task>) => {
+    const now = new Date().toISOString();
+    const newTask: Task = {
+      id: `TASK-${Date.now()}`,
+      title: data.title || 'New Task',
+      description: data.description || '',
+      status: data.status || 'todo',
+      priority: data.priority || 'medium',
+      category: data.category || 'general',
+      assignedTo: data.assignedTo || null,
+      assignedBy: CURRENT_USER_ID,
+      assignedByName: CURRENT_USER_NAME,
+      assignedAt: now,
+      clientId: data.clientId,
+      clientName: data.clientName,
+      dueDate: data.dueDate || null,
+      estimatedHours: data.estimatedHours || 1,
+      progress: 0,
+      canBeAutomated: false,
+      automationAttempts: 0,
+      timeSpent: 0,
+      timeEntries: [],
+      tags: data.tags || [],
+      checklist: data.checklist || [],
+      comments: [],
+      activityLog: [],
+      properties: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    setTasks((prev: Task[]) => [newTask, ...prev]);
+    showNotification('สร้างงานใหม่สำเร็จ', 'success');
+    await logAction('APPROVE', `Created task: ${newTask.title}`);
+  };
+
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    setTasks((prev: Task[]) => prev.map((task: Task) =>
+      task.id === taskId
+        ? { ...task, ...updates, updatedAt: new Date().toISOString() }
+        : task
+    ));
+    if (updates.status) {
+      showNotification(`อัปเดตสถานะงานเป็น ${updates.status}`, 'success');
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    const task = tasks.find((t: Task) => t.id === taskId);
+    setTasks((prev: Task[]) => prev.filter((t: Task) => t.id !== taskId));
+    showNotification('ลบงานสำเร็จ', 'success');
+    if (task) {
+      await logAction('APPROVE', `Deleted task: ${task.title}`);
+    }
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    // Could open a modal or navigate to task detail
+  };
+
+  const handleAssignTask = (staffId: string) => {
+    // Navigate to task creation with pre-selected assignee
+    showNotification(`เลือกพนักงานสำหรับมอบหมายงาน`, 'success');
+  };
+
+  const handleViewStaffTasks = (staffId: string) => {
+    // Could filter tasks by staff or navigate to staff detail
+    const staffMember = staff.find((s: Staff) => s.id === staffId);
+    showNotification(`ดูงานของ ${staffMember?.name || 'Staff'}`, 'success');
+  };
+
+  const handleRebalanceWorkload = () => {
+    showNotification('กำลังปรับสมดุลภาระงาน...', 'success');
+    // Could trigger AI agent for rebalancing
+  };
+
 
   // --- VIEW ROUTING ---
   const renderContent = () => {
@@ -877,6 +962,26 @@ const AppContent: React.FC = () => {
                     if (doc) handleOpenReview(doc);
                 }}
             />;
+        case 'task-board':
+            return <TaskBoard
+                tasks={tasks}
+                staff={staff}
+                onCreateTask={handleCreateTask}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onTaskClick={handleTaskClick}
+                currentUserId={CURRENT_USER_ID}
+            />;
+        case 'workload':
+            return <StaffWorkloadDashboard
+                staff={staff}
+                tasks={tasks}
+                onAssignTask={handleAssignTask}
+                onViewStaffTasks={handleViewStaffTasks}
+                onRebalanceWorkload={handleRebalanceWorkload}
+            />;
+        case 'ai-agents':
+            return <AIAgentsPage />;
         case 'reports':
             // SYSTEMATIC: Pass GL entries to global reporting view
             return <TaxReporting
