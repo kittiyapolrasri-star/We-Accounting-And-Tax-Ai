@@ -244,13 +244,13 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white rounded-t-xl z-10">
           <div className="flex items-center gap-4">
             {/* Icon */}
-            <button className="text-2xl hover:bg-gray-100 p-1 rounded">
+            <button className="text-2xl hover:bg-slate-100 p-1 rounded">
               {task.icon || '📋'}
             </button>
 
             {/* Breadcrumb */}
             {task.clientName && (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Building2 size={14} />
                 <span>{task.clientName}</span>
               </div>
@@ -259,8 +259,8 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
           <div className="flex items-center gap-2">
             {/* Timer */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
-              <Timer size={16} className="text-gray-500" />
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg">
+              <Timer size={16} className="text-slate-500" />
               <span className="text-sm font-mono">{formatTime(timerSeconds)}</span>
               <button
                 onClick={handleTimerToggle}
@@ -271,13 +271,13 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
             </div>
 
             {/* More Actions */}
-            <button className="p-2 hover:bg-gray-100 rounded-lg">
-              <MoreHorizontal size={20} className="text-gray-500" />
+            <button className="p-2 hover:bg-slate-100 rounded-lg">
+              <MoreHorizontal size={20} className="text-slate-500" />
             </button>
 
             {/* Close */}
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-              <X size={20} className="text-gray-500" />
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg">
+              <X size={20} className="text-slate-500" />
             </button>
           </div>
         </div>
@@ -295,12 +295,12 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   onChange={(e) => setTitle(e.target.value)}
                   onBlur={handleTitleSave}
                   onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
-                  className="text-2xl font-bold text-gray-900 w-full outline-none border-b-2 border-blue-500 pb-1"
+                  className="text-2xl font-bold text-slate-900 w-full outline-none border-b-2 border-blue-500 pb-1"
                 />
               ) : (
                 <h1
                   onClick={() => setIsEditingTitle(true)}
-                  className="text-2xl font-bold text-gray-900 cursor-text hover:bg-gray-50 rounded px-1 -mx-1"
+                  className="text-2xl font-bold text-slate-900 cursor-text hover:bg-slate-50 rounded px-1 -mx-1"
                 >
                   {task.title}
                 </h1>
@@ -309,7 +309,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
             {/* Description */}
             <div className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                 <FileText size={16} />
                 รายละเอียด
               </h3>
@@ -319,30 +319,30 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 onBlur={handleDescriptionSave}
                 placeholder="เพิ่มรายละเอียด..."
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               />
             </div>
 
             {/* Checklist */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
                   <CheckSquare size={16} />
                   รายการย่อย
                   {task.checklist.length > 0 && (
-                    <span className="text-gray-500">
+                    <span className="text-slate-500">
                       ({completedChecklist}/{task.checklist.length})
                     </span>
                   )}
                 </h3>
                 {task.checklist.length > 0 && (
-                  <span className="text-sm text-gray-500">{task.progress}%</span>
+                  <span className="text-sm text-slate-500">{task.progress}%</span>
                 )}
               </div>
 
               {/* Progress Bar */}
               {task.checklist.length > 0 && (
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
+                <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-3">
                   <div
                     className="h-full bg-green-500 rounded-full transition-all"
                     style={{ width: `${task.progress}%` }}
@@ -355,23 +355,23 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                 {task.checklist.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center gap-3 group py-1 px-2 -mx-2 hover:bg-gray-50 rounded-lg"
+                    className="flex items-center gap-3 group py-1 px-2 -mx-2 hover:bg-slate-50 rounded-lg"
                   >
-                    <GripVertical size={14} className="text-gray-300 opacity-0 group-hover:opacity-100 cursor-grab" />
+                    <GripVertical size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 cursor-grab" />
                     <input
                       type="checkbox"
                       checked={item.completed}
                       onChange={() => handleToggleChecklistItem(item.id)}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span
-                      className={`flex-1 text-sm ${item.completed ? 'text-gray-400 line-through' : 'text-gray-700'}`}
+                      className={`flex-1 text-sm ${item.completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}
                     >
                       {item.text}
                     </span>
                     <button
                       onClick={() => handleDeleteChecklistItem(item.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -387,7 +387,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   onChange={(e) => setNewChecklistItem(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddChecklistItem()}
                   placeholder="เพิ่มรายการ..."
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                   onClick={handleAddChecklistItem}
@@ -401,7 +401,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
             {/* Comments */}
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
                 <MessageSquare size={16} />
                 ความคิดเห็น ({task.comments.length})
               </h3>
@@ -415,8 +415,8 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-gray-900 text-sm">{comment.userName}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="font-medium text-slate-900 text-sm">{comment.userName}</span>
+                        <span className="text-xs text-slate-500">
                           {new Date(comment.createdAt).toLocaleDateString('th-TH', {
                             day: 'numeric',
                             month: 'short',
@@ -425,13 +425,13 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           })}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
                     </div>
                   </div>
                 ))}
 
                 {task.comments.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">ยังไม่มีความคิดเห็น</p>
+                  <p className="text-sm text-slate-400 text-center py-4">ยังไม่มีความคิดเห็น</p>
                 )}
               </div>
 
@@ -447,17 +447,17 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="เขียนความคิดเห็น..."
                     rows={2}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                   <div className="flex items-center justify-between mt-2">
                     <div className="flex items-center gap-2">
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+                      <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
                         <AtSign size={16} />
                       </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+                      <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
                         <Smile size={16} />
                       </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+                      <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded">
                         <Paperclip size={16} />
                       </button>
                     </div>
@@ -476,33 +476,33 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
           </div>
 
           {/* Sidebar */}
-          <div className="w-80 border-l bg-gray-50 p-6 overflow-y-auto max-h-[70vh]">
+          <div className="w-80 border-l bg-slate-50 p-6 overflow-y-auto max-h-[70vh]">
             {/* Properties */}
             <div className="space-y-4">
               {/* Status */}
               <div className="relative">
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">สถานะ</label>
+                <label className="text-xs font-medium text-slate-500 uppercase mb-1.5 block">สถานะ</label>
                 <button
                   onClick={() => setShowStatusMenu(!showStatusMenu)}
-                  className="w-full flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-white transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg hover:bg-white transition-colors"
                 >
                   <span
                     className="w-3 h-3 rounded-full"
                     style={{ backgroundColor: TASK_STATUS_COLORS[task.status] }}
                   />
-                  <span className="flex-1 text-left text-sm text-gray-700">
+                  <span className="flex-1 text-left text-sm text-slate-700">
                     {TASK_STATUS_LABELS[task.status]}
                   </span>
-                  <ChevronDown size={16} className="text-gray-400" />
+                  <ChevronDown size={16} className="text-slate-400" />
                 </button>
 
                 {showStatusMenu && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
                     {Object.entries(TASK_STATUS_LABELS).map(([status, label]) => (
                       <button
                         key={status}
                         onClick={() => handleStatusChange(status as TaskStatus)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-sm ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-sm ${
                           task.status === status ? 'bg-blue-50' : ''
                         }`}
                       >
@@ -519,41 +519,41 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
               {/* Assignee */}
               <div className="relative">
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">ผู้รับผิดชอบ</label>
+                <label className="text-xs font-medium text-slate-500 uppercase mb-1.5 block">ผู้รับผิดชอบ</label>
                 <button
                   onClick={() => setShowAssigneeMenu(!showAssigneeMenu)}
-                  className="w-full flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-white transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg hover:bg-white transition-colors"
                 >
                   {assignee ? (
                     <>
                       <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600">
                         {assignee.name.charAt(0)}
                       </div>
-                      <span className="flex-1 text-left text-sm text-gray-700">{assignee.name}</span>
+                      <span className="flex-1 text-left text-sm text-slate-700">{assignee.name}</span>
                     </>
                   ) : (
                     <>
-                      <User size={16} className="text-gray-400" />
-                      <span className="flex-1 text-left text-sm text-gray-400">ยังไม่มอบหมาย</span>
+                      <User size={16} className="text-slate-400" />
+                      <span className="flex-1 text-left text-sm text-slate-400">ยังไม่มอบหมาย</span>
                     </>
                   )}
-                  <ChevronDown size={16} className="text-gray-400" />
+                  <ChevronDown size={16} className="text-slate-400" />
                 </button>
 
                 {showAssigneeMenu && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
                     <button
                       onClick={() => handleAssigneeChange(null)}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-sm"
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-sm"
                     >
-                      <User size={16} className="text-gray-400" />
+                      <User size={16} className="text-slate-400" />
                       ไม่มอบหมาย
                     </button>
                     {staff.map((s) => (
                       <button
                         key={s.id}
                         onClick={() => handleAssigneeChange(s.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-sm ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-sm ${
                           task.assignedTo === s.id ? 'bg-blue-50' : ''
                         }`}
                       >
@@ -561,7 +561,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                           {s.name.charAt(0)}
                         </div>
                         <span className="flex-1 text-left">{s.name}</span>
-                        <span className="text-xs text-gray-400">{s.role}</span>
+                        <span className="text-xs text-slate-400">{s.role}</span>
                       </button>
                     ))}
                   </div>
@@ -570,25 +570,25 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
               {/* Priority */}
               <div className="relative">
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">ความสำคัญ</label>
+                <label className="text-xs font-medium text-slate-500 uppercase mb-1.5 block">ความสำคัญ</label>
                 <button
                   onClick={() => setShowPriorityMenu(!showPriorityMenu)}
-                  className="w-full flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg hover:bg-white transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg hover:bg-white transition-colors"
                 >
                   <Flag size={16} style={{ color: TASK_PRIORITY_COLORS[task.priority] }} />
-                  <span className="flex-1 text-left text-sm text-gray-700">
+                  <span className="flex-1 text-left text-sm text-slate-700">
                     {TASK_PRIORITY_LABELS[task.priority]}
                   </span>
-                  <ChevronDown size={16} className="text-gray-400" />
+                  <ChevronDown size={16} className="text-slate-400" />
                 </button>
 
                 {showPriorityMenu && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10">
                     {Object.entries(TASK_PRIORITY_LABELS).map(([priority, label]) => (
                       <button
                         key={priority}
                         onClick={() => handlePriorityChange(priority as TaskPriority)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-50 text-sm ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 text-sm ${
                           task.priority === priority ? 'bg-blue-50' : ''
                         }`}
                       >
@@ -602,22 +602,22 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
               {/* Due Date */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">กำหนดส่ง</label>
+                <label className="text-xs font-medium text-slate-500 uppercase mb-1.5 block">กำหนดส่ง</label>
                 <input
                   type="date"
                   value={task.dueDate || ''}
                   onChange={(e) => onUpdate({ dueDate: e.target.value || null })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               {/* Category */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">ประเภท</label>
+                <label className="text-xs font-medium text-slate-500 uppercase mb-1.5 block">ประเภท</label>
                 <select
                   value={task.category}
                   onChange={(e) => onUpdate({ category: e.target.value as TaskCategory })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {Object.entries(TASK_CATEGORY_LABELS).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
@@ -627,23 +627,23 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
               {/* Estimated Hours */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">เวลาประมาณ (ชม.)</label>
+                <label className="text-xs font-medium text-slate-500 uppercase mb-1.5 block">เวลาประมาณ (ชม.)</label>
                 <input
                   type="number"
                   min="0"
                   step="0.5"
                   value={task.estimatedHours}
                   onChange={(e) => onUpdate({ estimatedHours: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               {/* Time Spent */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">เวลาที่ใช้ไป</label>
-                <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-white">
-                  <Clock size={16} className="text-gray-400" />
-                  <span className="text-sm text-gray-700">
+                <label className="text-xs font-medium text-slate-500 uppercase mb-1.5 block">เวลาที่ใช้ไป</label>
+                <div className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg bg-white">
+                  <Clock size={16} className="text-slate-400" />
+                  <span className="text-sm text-slate-700">
                     {Math.floor(task.timeSpent / 60)} ชม. {task.timeSpent % 60} นาที
                   </span>
                 </div>
@@ -651,17 +651,17 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
 
               {/* Tags */}
               <div>
-                <label className="text-xs font-medium text-gray-500 uppercase mb-1.5 block">แท็ก</label>
+                <label className="text-xs font-medium text-slate-500 uppercase mb-1.5 block">แท็ก</label>
                 <div className="flex flex-wrap gap-1">
                   {task.tags.map((tag, index) => (
                     <span
                       key={index}
-                      className="px-2 py-1 bg-gray-200 text-gray-700 rounded-full text-xs"
+                      className="px-2 py-1 bg-slate-200 text-slate-700 rounded-full text-xs"
                     >
                       {tag}
                     </span>
                   ))}
-                  <button className="px-2 py-1 border border-dashed border-gray-300 text-gray-400 rounded-full text-xs hover:border-gray-400 hover:text-gray-500">
+                  <button className="px-2 py-1 border border-dashed border-slate-300 text-slate-400 rounded-full text-xs hover:border-slate-400 hover:text-slate-500">
                     <Plus size={12} />
                   </button>
                 </div>
@@ -692,13 +692,13 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         </div>
 
         {/* Footer - Activity */}
-        <div className="border-t px-6 py-3 bg-gray-50 rounded-b-xl">
-          <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="border-t px-6 py-3 bg-slate-50 rounded-b-xl">
+          <div className="flex items-center justify-between text-xs text-slate-500">
             <div className="flex items-center gap-4">
               <span>สร้างเมื่อ {new Date(task.createdAt).toLocaleDateString('th-TH')}</span>
               <span>อัปเดตล่าสุด {new Date(task.updatedAt).toLocaleDateString('th-TH')}</span>
             </div>
-            <button className="flex items-center gap-1 text-gray-500 hover:text-gray-700">
+            <button className="flex items-center gap-1 text-slate-500 hover:text-slate-700">
               <History size={14} />
               <span>ดูประวัติ ({task.activityLog.length})</span>
             </button>

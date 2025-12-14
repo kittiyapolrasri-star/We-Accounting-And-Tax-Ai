@@ -216,13 +216,15 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
       {/* Header */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <FileText className="text-orange-600" size={24} />
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-orange-100 rounded-xl">
+              <FileText className="text-orange-600" size={28} />
+            </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-800">
+              <h1 className="text-2xl font-bold text-slate-900">
                 หนังสือรับรองหักภาษี ณ ที่จ่าย (50 ทวิ)
-              </h2>
-              <p className="text-sm text-gray-500">
+              </h1>
+              <p className="text-sm text-slate-500">
                 WHT Certificate Management
               </p>
             </div>
@@ -248,7 +250,7 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
             <div className="flex flex-wrap items-center gap-3 mb-4">
               {/* Month selector */}
               <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-gray-400" />
+                <Calendar size={16} className="text-slate-400" />
                 <input
                   type="month"
                   value={selectedMonth}
@@ -259,7 +261,7 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
 
               {/* Form type filter */}
               <div className="flex items-center gap-2">
-                <Filter size={16} className="text-gray-400" />
+                <Filter size={16} className="text-slate-400" />
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value as 'all' | 'PND3' | 'PND53')}
@@ -273,7 +275,7 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
 
               {/* Search */}
               <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                <Search size={16} className="text-gray-400" />
+                <Search size={16} className="text-slate-400" />
                 <input
                   type="text"
                   placeholder="ค้นหาผู้รับเงิน..."
@@ -287,7 +289,7 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
               <button
                 onClick={handleGenerateCertificates}
                 disabled={isGenerating || whtDocuments.length === 0}
-                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:bg-gray-300 flex items-center gap-2"
+                className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:bg-slate-300 flex items-center gap-2"
               >
                 {isGenerating ? (
                   <>
@@ -305,9 +307,9 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
 
             {/* Summary Cards */}
             <div className="grid grid-cols-5 gap-3 mb-4">
-              <div className="bg-gray-50 p-3 rounded-lg text-center">
-                <div className="text-xl font-bold text-gray-700">{summary.totalDocs}</div>
-                <div className="text-xs text-gray-500">เอกสารทั้งหมด</div>
+              <div className="bg-slate-50 p-3 rounded-lg text-center">
+                <div className="text-xl font-bold text-slate-700">{summary.totalDocs}</div>
+                <div className="text-xs text-slate-500">เอกสารทั้งหมด</div>
               </div>
               <div className="bg-blue-50 p-3 rounded-lg text-center">
                 <div className="text-xl font-bold text-blue-600">{summary.pnd3Count}</div>
@@ -337,7 +339,7 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
             <>
               {/* Generated certificates header */}
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium text-gray-700">
+                <h3 className="font-medium text-slate-700">
                   หนังสือรับรองที่สร้างแล้ว ({generatedCertificates.length} ฉบับ)
                 </h3>
                 <button
@@ -354,22 +356,22 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
                 {generatedCertificates.map((cert, index) => (
                   <div
                     key={cert.certificateNo}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded hover:bg-gray-100"
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded hover:bg-slate-100"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-sm font-bold text-orange-600">
                         {index + 1}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-800">{cert.payeeName}</div>
-                        <div className="text-xs text-gray-500">
+                        <div className="font-medium text-slate-800">{cert.payeeName}</div>
+                        <div className="text-xs text-slate-500">
                           เลขที่ {cert.certificateNo} | {cert.formType}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <div className="text-sm font-medium text-gray-700">
+                        <div className="text-sm font-medium text-slate-700">
                           {formatCurrency(cert.totalIncome)} บาท
                         </div>
                         <div className="text-xs text-orange-600">
@@ -379,14 +381,14 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
                       <div className="flex gap-1">
                         <button
                           onClick={() => setSelectedCertificate(cert)}
-                          className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 rounded"
+                          className="p-2 text-slate-500 hover:text-blue-500 hover:bg-blue-50 rounded"
                           title="ดูรายละเอียด"
                         >
                           <Eye size={16} />
                         </button>
                         <button
                           onClick={() => handlePrintCertificate(cert)}
-                          className="p-2 text-gray-500 hover:text-green-500 hover:bg-green-50 rounded"
+                          className="p-2 text-slate-500 hover:text-green-500 hover:bg-green-50 rounded"
                           title="พิมพ์"
                         >
                           <Printer size={16} />
@@ -400,13 +402,13 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
           ) : (
             <>
               {/* Source documents list */}
-              <h3 className="font-medium text-gray-700 mb-3">
+              <h3 className="font-medium text-slate-700 mb-3">
                 เอกสารที่มีภาษีหัก ณ ที่จ่าย - {getThaiMonthYear(selectedMonth)}
               </h3>
 
               {whtDocuments.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <FileText size={48} className="mx-auto mb-2 text-gray-300" />
+                <div className="text-center py-8 text-slate-500">
+                  <FileText size={48} className="mx-auto mb-2 text-slate-300" />
                   <p>ไม่พบเอกสารที่มีภาษีหัก ณ ที่จ่ายในเดือนนี้</p>
                 </div>
               ) : (
@@ -414,21 +416,21 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
                   {whtDocuments.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded"
+                      className="flex items-center justify-between p-3 bg-slate-50 rounded"
                     >
                       <div className="flex items-center gap-3">
-                        <User size={20} className="text-gray-400" />
+                        <User size={20} className="text-slate-400" />
                         <div>
-                          <div className="font-medium text-gray-800">
+                          <div className="font-medium text-slate-800">
                             {doc.ai_data?.parties?.counterparty?.name || 'ไม่ระบุผู้รับเงิน'}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-slate-500">
                             {doc.ai_data?.header_data.inv_number} | {doc.ai_data?.header_data.issue_date}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium text-gray-700">
+                        <div className="text-sm font-medium text-slate-700">
                           {formatCurrency(doc.ai_data?.financials?.grand_total || 0)} บาท
                         </div>
                         <div className="text-xs text-orange-600">
@@ -450,12 +452,12 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
             <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="font-medium text-gray-800">
+              <h3 className="font-medium text-slate-800">
                 หนังสือรับรองหักภาษี ณ ที่จ่าย เลขที่ {selectedCertificate.certificateNo}
               </h3>
               <button
                 onClick={() => setSelectedCertificate(null)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-slate-500 hover:text-slate-700"
               >
                 ✕
               </button>
@@ -465,21 +467,21 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-gray-500">ผู้จ่ายเงิน</label>
+                    <label className="text-xs text-slate-500">ผู้จ่ายเงิน</label>
                     <div className="font-medium">{selectedCertificate.payerName}</div>
-                    <div className="text-sm text-gray-500">เลขประจำตัวผู้เสียภาษี: {selectedCertificate.payerTaxId}</div>
+                    <div className="text-sm text-slate-500">เลขประจำตัวผู้เสียภาษี: {selectedCertificate.payerTaxId}</div>
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500">ผู้รับเงิน</label>
+                    <label className="text-xs text-slate-500">ผู้รับเงิน</label>
                     <div className="font-medium">{selectedCertificate.payeeName}</div>
-                    <div className="text-sm text-gray-500">เลขประจำตัวผู้เสียภาษี: {selectedCertificate.payeeTaxId}</div>
+                    <div className="text-sm text-slate-500">เลขประจำตัวผู้เสียภาษี: {selectedCertificate.payeeTaxId}</div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs text-gray-500 mb-2 block">รายการเงินได้</label>
+                  <label className="text-xs text-slate-500 mb-2 block">รายการเงินได้</label>
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-100">
+                    <thead className="bg-slate-100">
                       <tr>
                         <th className="p-2 text-left">ประเภทเงินได้</th>
                         <th className="p-2 text-right">จำนวนเงิน</th>
@@ -495,7 +497,7 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot className="bg-gray-50 font-medium">
+                    <tfoot className="bg-slate-50 font-medium">
                       <tr>
                         <td className="p-2">รวม</td>
                         <td className="p-2 text-right">{formatCurrency(selectedCertificate.totalIncome)}</td>
@@ -516,7 +518,7 @@ const WHTCertificateManager: React.FC<WHTCertificateManagerProps> = ({
             <div className="p-4 border-t flex justify-end gap-2">
               <button
                 onClick={() => setSelectedCertificate(null)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded"
               >
                 ปิด
               </button>
