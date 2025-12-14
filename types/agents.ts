@@ -81,11 +81,28 @@ export interface AgentExecution {
 export interface AgentInput {
   type: string;
   data: Record<string, any>;
-  context?: {
-    clientName?: string;
-    previousExecutions?: string[];
-    priority?: AgentPriority;
-  };
+  context?: AgentInputContext;
+}
+
+// Extended context for various agent types
+export interface AgentInputContext {
+  clientName?: string;
+  clientId?: string;
+  previousExecutions?: string[];
+  priority?: AgentPriority;
+  // For document/tax agents
+  documents?: any[];
+  period?: string;
+  // For reconciliation agent
+  bankTransactions?: any[];
+  glEntries?: any[];
+  // For task assignment agent
+  tasks?: any[];
+  staff?: any[];
+  unassignedTasks?: any[];
+  // For notification agent
+  clients?: any[];
+  currentDate?: string;
 }
 
 export interface AgentOutput {
@@ -94,6 +111,14 @@ export interface AgentOutput {
   suggestedActions?: SuggestedAction[];
   warnings?: string[];
   nextSteps?: NextStep[];
+  actions?: AgentActionButton[];
+}
+
+// Action buttons for UI
+export interface AgentActionButton {
+  type: string;
+  label: string;
+  data?: Record<string, any>;
 }
 
 export interface SuggestedAction {
