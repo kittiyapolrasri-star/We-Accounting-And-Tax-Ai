@@ -4,7 +4,7 @@ import {
   Building, FilePlus, BarChart3, ChevronRight, ChevronDown, Scale,
   Briefcase, Globe, DollarSign, Database, RefreshCw, Send, Zap,
   GitBranch, Gauge, FolderKanban, UsersRound, Calendar, Bot,
-  ClipboardList
+  ClipboardList, Crown, ShoppingCart, Bell, FileSpreadsheet
 } from 'lucide-react';
 
 interface Props {
@@ -30,9 +30,9 @@ interface MenuGroup {
 
 const WeLogo = () => (
   <svg width="40" height="30" viewBox="0 0 50 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-    <path d="M10 25L18 17" stroke="#3B82F6" strokeWidth="8" strokeLinecap="round"/>
-    <path d="M18 17L28 27" stroke="#22D3EE" strokeWidth="8" strokeLinecap="round"/>
-    <path d="M28 27L42 5" stroke="#3B82F6" strokeWidth="8" strokeLinecap="round"/>
+    <path d="M10 25L18 17" stroke="#3B82F6" strokeWidth="8" strokeLinecap="round" />
+    <path d="M18 17L28 27" stroke="#22D3EE" strokeWidth="8" strokeLinecap="round" />
+    <path d="M28 27L42 5" stroke="#3B82F6" strokeWidth="8" strokeLinecap="round" />
   </svg>
 );
 
@@ -59,7 +59,7 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
     return items.some(item => item.id === activeView);
   };
 
-  // Menu structure with groups
+  // Menu structure with groups - OPTIMIZED: Reduced duplication
   const menuGroups: MenuGroup[] = [
     {
       id: 'dashboard',
@@ -67,9 +67,8 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
       icon: LayoutDashboard,
       defaultOpen: true,
       items: [
-        { id: 'dashboard', label: 'ภาพรวมผู้บริหาร', icon: LayoutDashboard },
-        { id: 'command-center', label: 'ศูนย์ควบคุมงาน', icon: BarChart3 },
-        { id: 'smart-dashboard', label: 'แดชบอร์ดอัจฉริยะ', icon: Gauge },
+        { id: 'smart-dashboard', label: 'Dashboard หลัก', icon: LayoutDashboard },
+        { id: 'ceo-dashboard', label: 'CEO Command Center', icon: Crown },
       ]
     },
     {
@@ -79,18 +78,21 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
       defaultOpen: true,
       items: [
         { id: 'workplace', label: 'งานของฉัน', icon: Briefcase },
-        { id: 'task-board', label: 'บอร์ดงาน (Kanban)', icon: FolderKanban, badge: 'NEW' },
+        { id: 'task-board', label: 'บอร์ดงาน (Kanban)', icon: FolderKanban },
+        { id: 'task-timeline', label: 'Timeline (Gantt)', icon: GitBranch },
         { id: 'documents', label: 'ทะเบียนเอกสาร', icon: FileText },
         { id: 'reconciliation', label: 'กระทบยอดธนาคาร', icon: Scale },
       ]
     },
     {
-      id: 'client',
+      id: 'data',
       label: 'ลูกค้า & ข้อมูล',
       icon: Building,
       items: [
         { id: 'clients', label: 'ทะเบียนลูกค้า', icon: Building },
         { id: 'master-data', label: 'ข้อมูลหลัก', icon: Database },
+        { id: 'sales-import', label: 'นำเข้ายอดขาย', icon: FileSpreadsheet, badge: 'NEW' },
+        { id: 'ecommerce-sync', label: 'เชื่อม E-Commerce', icon: ShoppingCart },
       ]
     },
     {
@@ -109,20 +111,22 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
     },
     {
       id: 'team',
-      label: 'ทีมงาน & AI',
+      label: 'ทีมงาน',
       icon: UsersRound,
       items: [
         { id: 'staff', label: 'จัดการทีมงาน', icon: Users },
-        { id: 'workload', label: 'Workload Dashboard', icon: BarChart3, badge: 'NEW' },
-        { id: 'workflow', label: 'ระบบอนุมัติ', icon: GitBranch },
+        { id: 'workload', label: 'Workload Dashboard', icon: BarChart3 },
+        { id: 'notifications', label: 'การแจ้งเตือน', icon: Bell },
       ]
     },
     {
-      id: 'settings',
-      label: 'ตั้งค่าระบบ',
-      icon: Settings,
+      id: 'automation',
+      label: 'อัตโนมัติ & AI',
+      icon: Zap,
       items: [
-        { id: 'automation', label: 'ระบบอัตโนมัติ', icon: Zap },
+        { id: 'accounting-workflow', label: 'Workflow บัญชี', icon: Zap },
+        { id: 'recurring-tasks', label: 'งานประจำอัตโนมัติ', icon: RefreshCw },
+        { id: 'automation', label: 'ตั้งค่า Automation', icon: Settings },
         { id: 'ai-agents', label: 'AI Agents', icon: Bot, badge: 'BETA' },
       ]
     },
@@ -178,11 +182,10 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
                 {/* Group Header */}
                 <button
                   onClick={() => toggleGroup(group.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
-                    hasActiveItem
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${hasActiveItem
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50'
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <GroupIcon size={18} className={hasActiveItem ? 'text-blue-600' : 'text-slate-400'} />
@@ -206,22 +209,20 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
                         <button
                           key={item.id}
                           onClick={() => onChangeView(item.id)}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all group ${
-                            isActive
-                              ? 'bg-blue-100 text-blue-700 font-medium'
-                              : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
-                          }`}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all group ${isActive
+                            ? 'bg-blue-100 text-blue-700 font-medium'
+                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                            }`}
                         >
                           <div className="flex items-center gap-2.5">
                             <Icon size={16} className={isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-500'} />
                             <span className="text-sm">{item.label}</span>
                           </div>
                           {item.badge && (
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                              item.badge === 'NEW'
-                                ? 'bg-green-100 text-green-600'
-                                : 'bg-purple-100 text-purple-600'
-                            }`}>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.badge === 'NEW'
+                              ? 'bg-green-100 text-green-600'
+                              : 'bg-purple-100 text-purple-600'
+                              }`}>
                               {item.badge}
                             </span>
                           )}

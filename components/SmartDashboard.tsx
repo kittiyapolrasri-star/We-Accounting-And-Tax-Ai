@@ -107,44 +107,56 @@ const SmartDashboard: React.FC<Props> = ({
   // Overview Tab
   const renderOverview = () => (
     <div className="space-y-6">
-      {/* Hero Stats */}
+      {/* Hero Stats - Clean White Cards */}
       <div className="grid grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-6 text-white">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <DollarSign size={28} />
-            <span className="text-xs font-medium bg-white/20 px-2 py-1 rounded-full">Revenue</span>
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <DollarSign size={24} className="text-slate-600" />
+            </div>
+            <span className="text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-full">Revenue</span>
           </div>
-          <p className="text-3xl font-bold">{formatCurrency(summary?.monthlyRevenue || 0)}</p>
-          <p className="text-blue-100 text-sm mt-1">รายได้เดือนนี้</p>
+          <p className="text-2xl font-bold text-slate-900">{formatCurrency(summary?.monthlyRevenue || 0)}</p>
+          <p className="text-slate-500 text-sm mt-1">รายได้เดือนนี้</p>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <FileText size={28} />
-            <span className="text-xs font-medium bg-white/20 px-2 py-1 rounded-full">Documents</span>
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <FileText size={24} className="text-slate-600" />
+            </div>
+            <span className="text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-full">Documents</span>
           </div>
-          <p className="text-3xl font-bold">{formatNumber(summary?.totalDocuments || 0)}</p>
-          <p className="text-emerald-100 text-sm mt-1">
-            <span className="text-white font-semibold">{summary?.pendingDocuments || 0}</span> รอดำเนินการ
+          <p className="text-2xl font-bold text-slate-900">{formatNumber(summary?.totalDocuments || 0)}</p>
+          <p className="text-slate-500 text-sm mt-1">
+            <span className={`font-semibold ${(summary?.pendingDocuments || 0) > 0 ? 'text-amber-600' : 'text-slate-600'}`}>
+              {summary?.pendingDocuments || 0}
+            </span> รอดำเนินการ
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-6 text-white">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <Building size={28} />
-            <span className="text-xs font-medium bg-white/20 px-2 py-1 rounded-full">Clients</span>
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <Building size={24} className="text-slate-600" />
+            </div>
+            <span className="text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-full">Clients</span>
           </div>
-          <p className="text-3xl font-bold">{summary?.activeClients || 0}</p>
-          <p className="text-violet-100 text-sm mt-1">ลูกค้าที่ดูแล</p>
+          <p className="text-2xl font-bold text-slate-900">{summary?.activeClients || 0}</p>
+          <p className="text-slate-500 text-sm mt-1">ลูกค้าที่ดูแล</p>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <Target size={28} />
-            <span className="text-xs font-medium bg-white/20 px-2 py-1 rounded-full">SLA</span>
+            <div className={`p-2 rounded-lg ${(summary?.slaCompliance || 0) >= 90 ? 'bg-green-50' : 'bg-amber-50'}`}>
+              <Target size={24} className={(summary?.slaCompliance || 0) >= 90 ? 'text-green-600' : 'text-amber-600'} />
+            </div>
+            <span className="text-xs font-medium bg-slate-100 text-slate-600 px-2 py-1 rounded-full">SLA</span>
           </div>
-          <p className="text-3xl font-bold">{summary?.slaCompliance || 0}%</p>
-          <p className="text-amber-100 text-sm mt-1">ประสิทธิภาพการทำงาน</p>
+          <p className={`text-2xl font-bold ${(summary?.slaCompliance || 0) >= 90 ? 'text-green-600' : 'text-amber-600'}`}>
+            {summary?.slaCompliance || 0}%
+          </p>
+          <p className="text-slate-500 text-sm mt-1">ประสิทธิภาพการทำงาน</p>
         </div>
       </div>
 
@@ -193,18 +205,17 @@ const SmartDashboard: React.FC<Props> = ({
                   <p className="text-sm text-slate-600">{kpi.nameTh}</p>
                   <p className="text-lg font-bold text-slate-800">
                     {kpi.unit === 'currency' ? formatCurrency(kpi.value) :
-                     kpi.unit === 'percentage' ? `${kpi.value}%` :
-                     formatNumber(kpi.value)}
+                      kpi.unit === 'percentage' ? `${kpi.value}%` :
+                        formatNumber(kpi.value)}
                   </p>
                 </div>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                  kpi.trendIsGood
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-700'
-                }`}>
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${kpi.trendIsGood
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+                  }`}>
                   {kpi.trend === 'up' ? <TrendingUp size={14} /> :
-                   kpi.trend === 'down' ? <TrendingDown size={14} /> :
-                   <Activity size={14} />}
+                    kpi.trend === 'down' ? <TrendingDown size={14} /> :
+                      <Activity size={14} />}
                 </div>
               </div>
             ))}
@@ -254,8 +265,8 @@ const SmartDashboard: React.FC<Props> = ({
               <div key={item.id} className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50">
                 <span className={`text-xs px-2 py-1 rounded border font-medium ${getPriorityColor(item.priority)}`}>
                   {item.priority === 'urgent' ? 'ด่วน' :
-                   item.priority === 'high' ? 'สูง' :
-                   item.priority === 'medium' ? 'ปานกลาง' : 'ต่ำ'}
+                    item.priority === 'high' ? 'สูง' :
+                      item.priority === 'medium' ? 'ปานกลาง' : 'ต่ำ'}
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-700 truncate">{item.titleTh}</p>
@@ -343,9 +354,8 @@ const SmartDashboard: React.FC<Props> = ({
                     </p>
                   )}
                 </div>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                  kpi.trendIsGood ? 'bg-green-100' : 'bg-red-100'
-                }`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${kpi.trendIsGood ? 'bg-green-100' : 'bg-red-100'
+                  }`}>
                   {kpi.trend === 'up' ? (
                     <TrendingUp className={kpi.trendIsGood ? 'text-green-600' : 'text-red-600'} size={28} />
                   ) : (
@@ -382,9 +392,8 @@ const SmartDashboard: React.FC<Props> = ({
                     </div>
                   )}
                 </div>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                  kpi.trendIsGood ? 'bg-green-100' : 'bg-amber-100'
-                }`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${kpi.trendIsGood ? 'bg-green-100' : 'bg-amber-100'
+                  }`}>
                   {kpi.trendIsGood ? (
                     <CheckCircle2 className="text-green-600" size={28} />
                   ) : (
@@ -413,9 +422,8 @@ const SmartDashboard: React.FC<Props> = ({
                     {formatNumber(kpi.value)}
                   </p>
                 </div>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                  kpi.trendIsGood ? 'bg-green-100' : 'bg-red-100'
-                }`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center ${kpi.trendIsGood ? 'bg-green-100' : 'bg-red-100'
+                  }`}>
                   {kpi.value === 0 ? (
                     <CheckCircle2 className="text-green-600" size={28} />
                   ) : (
@@ -468,26 +476,23 @@ const SmartDashboard: React.FC<Props> = ({
         alerts.map(alert => (
           <div
             key={alert.id}
-            className={`bg-white rounded-xl border overflow-hidden ${
-              alert.type === 'critical' ? 'border-red-200' :
+            className={`bg-white rounded-xl border overflow-hidden ${alert.type === 'critical' ? 'border-red-200' :
               alert.type === 'warning' ? 'border-amber-200' :
-              alert.type === 'success' ? 'border-green-200' : 'border-slate-200'
-            }`}
+                alert.type === 'success' ? 'border-green-200' : 'border-slate-200'
+              }`}
           >
-            <div className={`px-5 py-4 flex items-start gap-4 ${
-              alert.type === 'critical' ? 'bg-red-50' :
+            <div className={`px-5 py-4 flex items-start gap-4 ${alert.type === 'critical' ? 'bg-red-50' :
               alert.type === 'warning' ? 'bg-amber-50' :
-              alert.type === 'success' ? 'bg-green-50' : 'bg-slate-50'
-            }`}>
+                alert.type === 'success' ? 'bg-green-50' : 'bg-slate-50'
+              }`}>
               {getAlertIcon(alert.type)}
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <h4 className="font-semibold text-slate-800">{alert.titleTh}</h4>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    alert.type === 'critical' ? 'bg-red-200 text-red-700' :
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${alert.type === 'critical' ? 'bg-red-200 text-red-700' :
                     alert.type === 'warning' ? 'bg-amber-200 text-amber-700' :
-                    alert.type === 'success' ? 'bg-green-200 text-green-700' : 'bg-slate-200 text-slate-700'
-                  }`}>
+                      alert.type === 'success' ? 'bg-green-200 text-green-700' : 'bg-slate-200 text-slate-700'
+                    }`}>
                     {alert.category}
                   </span>
                 </div>
@@ -528,11 +533,10 @@ const SmartDashboard: React.FC<Props> = ({
 
         return (
           <div key={priority} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className={`px-5 py-3 flex items-center gap-2 ${
-              priority === 'urgent' ? 'bg-red-50' :
+            <div className={`px-5 py-3 flex items-center gap-2 ${priority === 'urgent' ? 'bg-red-50' :
               priority === 'high' ? 'bg-amber-50' :
-              priority === 'medium' ? 'bg-blue-50' : 'bg-slate-50'
-            }`}>
+                priority === 'medium' ? 'bg-blue-50' : 'bg-slate-50'
+              }`}>
               <div className={`w-3 h-3 rounded-full ${priorityLabels[priority as keyof typeof priorityLabels].color}`} />
               <h3 className="font-semibold text-slate-800">
                 {priorityLabels[priority as keyof typeof priorityLabels].label}
@@ -542,18 +546,17 @@ const SmartDashboard: React.FC<Props> = ({
             <div className="divide-y divide-slate-100">
               {priorityItems.map(item => (
                 <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-slate-50">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    item.type === 'review' ? 'bg-blue-100 text-blue-600' :
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${item.type === 'review' ? 'bg-blue-100 text-blue-600' :
                     item.type === 'approval' ? 'bg-green-100 text-green-600' :
-                    item.type === 'closing' ? 'bg-purple-100 text-purple-600' :
-                    item.type === 'reconciliation' ? 'bg-amber-100 text-amber-600' :
-                    'bg-slate-100 text-slate-600'
-                  }`}>
+                      item.type === 'closing' ? 'bg-purple-100 text-purple-600' :
+                        item.type === 'reconciliation' ? 'bg-amber-100 text-amber-600' :
+                          'bg-slate-100 text-slate-600'
+                    }`}>
                     {item.type === 'review' ? <Eye size={20} /> :
-                     item.type === 'approval' ? <CheckCircle2 size={20} /> :
-                     item.type === 'closing' ? <Calendar size={20} /> :
-                     item.type === 'reconciliation' ? <RefreshCw size={20} /> :
-                     <FileText size={20} />}
+                      item.type === 'approval' ? <CheckCircle2 size={20} /> :
+                        item.type === 'closing' ? <Calendar size={20} /> :
+                          item.type === 'reconciliation' ? <RefreshCw size={20} /> :
+                            <FileText size={20} />}
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-slate-800">{item.titleTh}</p>
@@ -667,8 +670,8 @@ const SmartDashboard: React.FC<Props> = ({
                   <td className="px-5 py-4 text-center">
                     <span className={`text-xs px-3 py-1 rounded-full font-medium ${getHealthColor(client.status)}`}>
                       {client.status === 'excellent' ? 'ดีเยี่ยม' :
-                       client.status === 'good' ? 'ปกติ' :
-                       client.status === 'attention' ? 'ต้องดูแล' : 'วิกฤต'}
+                        client.status === 'good' ? 'ปกติ' :
+                          client.status === 'attention' ? 'ต้องดูแล' : 'วิกฤต'}
                     </span>
                   </td>
                   <td className="px-5 py-4 text-center">
@@ -712,16 +715,18 @@ const SmartDashboard: React.FC<Props> = ({
   ];
 
   return (
-    <div className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+    <div className="flex-1 overflow-auto bg-slate-50">
       <div className="p-8">
-        {/* Header */}
+        {/* Header - Clean Minimal */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-              <PieChart className="text-indigo-600" size={32} />
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+              <div className="p-2 bg-slate-100 rounded-xl">
+                <PieChart className="text-slate-700" size={24} />
+              </div>
               Smart Dashboard
             </h1>
-            <p className="text-slate-500 mt-2">
+            <p className="text-slate-500 mt-2 ml-12">
               แดชบอร์ดอัจฉริยะสำหรับผู้บริหาร - KPIs, Alerts, และ Action Items
             </p>
           </div>
@@ -729,14 +734,13 @@ const SmartDashboard: React.FC<Props> = ({
           <div className="flex items-center gap-4">
             <div className="text-right text-sm text-slate-500">
               <p>อัปเดตล่าสุด</p>
-              <p className="font-medium">{lastRefresh.toLocaleTimeString('th-TH')}</p>
+              <p className="font-medium text-slate-700">{lastRefresh.toLocaleTimeString('th-TH')}</p>
             </div>
             <button
               onClick={refreshData}
               disabled={isRefreshing}
-              className={`p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 ${
-                isRefreshing ? 'animate-spin' : ''
-              }`}
+              className={`p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 shadow-sm ${isRefreshing ? 'animate-spin' : ''
+                }`}
             >
               <RefreshCw size={20} className="text-slate-600" />
             </button>
@@ -752,11 +756,10 @@ const SmartDashboard: React.FC<Props> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors relative ${
-                  isActive
-                    ? 'bg-white text-blue-600 border border-slate-200 border-b-white -mb-px'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors relative ${isActive
+                  ? 'bg-white text-blue-600 border border-slate-200 border-b-white -mb-px'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                  }`}
               >
                 <Icon size={18} />
                 {tab.label}

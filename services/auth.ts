@@ -11,18 +11,14 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { app, db, isFirebaseConfigured } from "./firebase";
+import { AuthUser } from "../types";
 
 // Initialize Firebase Auth
 const auth = isFirebaseConfigured ? getAuth(app) : null;
 
-export interface AuthUser {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  role: string;
-  staffId: string;
-  assignedClients: string[];
-}
+// Re-export AuthUser for convenience
+export type { AuthUser };
+
 
 export interface LoginResult {
   success: boolean;
@@ -121,7 +117,7 @@ export const getCurrentUser = (): User | null => {
 export const onAuthChange = (callback: (user: User | null) => void): (() => void) => {
   if (!auth) {
     callback(null);
-    return () => {};
+    return () => { };
   }
 
   return onAuthStateChanged(auth, callback);

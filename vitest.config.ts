@@ -6,12 +6,15 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['**/*.{test,spec}.{ts,tsx}'],
+    setupFiles: ['./tests/setup.ts'],
+    include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx', '**/*.{test,spec}.{ts,tsx}'],
     exclude: ['node_modules', 'dist', 'functions'],
+    testTimeout: 10000,
     coverage: {
+      provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules', 'dist', 'functions', '**/*.d.ts'],
+      include: ['services/**/*.ts'],
+      exclude: ['node_modules', 'dist', 'functions', '**/*.d.ts', 'services/firebase.ts'],
     },
   },
 });

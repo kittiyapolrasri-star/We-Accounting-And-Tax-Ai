@@ -74,16 +74,56 @@ export const analyzeDocumentHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // Initialize Gemini
+    // Initialize Gemini 3 Pro - Google's most advanced reasoning model
+    // Launched Nov 2025 - Best reasoning, visual understanding & coding
     const genAI = new GoogleGenerativeAI(getApiKey());
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro",
+      model: "gemini-3-pro-preview",
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: {
         temperature: 0.1,
         responseMimeType: "application/json",
       },
     });
+
+    // Check for multi-page PDF and extract text context
+    let additionalContext = "";
+    let pageInfo = { totalPages: 1, isMultiPage: false };
+
+    if (mimeType === "application/pdf") {
+      try {
+        // Import pdf-parse dynamically to avoid issues if not installed
+        const pdfParse = require('pdf-parse');
+        const pdfBuffer = Buffer.from(fileData, 'base64');
+        const pdfData = await pdfParse(pdfBuffer);
+
+        pageInfo = {
+          totalPages: pdfData.numpages,
+          isMultiPage: pdfData.numpages > 1,
+        };
+
+        if (pdfData.numpages > 1) {
+          console.log(`Processing multi-page PDF: ${pdfData.numpages} pages`);
+          // Add extracted text as context for better AI understanding
+          additionalContext = `
+เอกสารนี้มี ${pdfData.numpages} หน้า
+ข้อความที่ดึงได้จากทุกหน้า:
+---
+${pdfData.text.substring(0, 8000)}
+---
+กรุณาวิเคราะห์ข้อมูลจากทุกหน้ารวมกัน รวมยอดเงินจากทุกหน้าถ้าจำเป็น`;
+        }
+      } catch (pdfError) {
+        console.warn("PDF text extraction failed, using image-only analysis:", pdfError);
+        // Continue with image-only analysis
+      }
+    }
+
+    // Build prompt with multi-page context
+    const analysisPrompt = `วิเคราะห์เอกสารบัญชีนี้สำหรับลูกค้า: ${clientName || "ไม่ระบุ"} (ID: ${clientId || "ไม่ระบุ"})
+${additionalContext}
+ดึงข้อมูลและสร้าง Journal Entry ตามมาตรฐานการบัญชีไทย (TAS)
+ส่งผลลัพธ์เป็น JSON`;
 
     // Analyze document
     const result = await model.generateContent([
@@ -94,10 +134,7 @@ export const analyzeDocumentHandler = async (req: Request, res: Response) => {
         },
       },
       {
-        text: `วิเคราะห์เอกสารบัญชีนี้สำหรับลูกค้า: ${clientName || "ไม่ระบุ"} (ID: ${clientId || "ไม่ระบุ"})
-
-ดึงข้อมูลและสร้าง Journal Entry ตามมาตรฐานการบัญชีไทย (TAS)
-ส่งผลลัพธ์เป็น JSON`,
+        text: analysisPrompt,
       },
     ]);
 
@@ -112,8 +149,9 @@ export const analyzeDocumentHandler = async (req: Request, res: Response) => {
 
     // Add metadata
     data.processed_at = new Date().toISOString();
-    data.processed_by = "gemini-1.5-pro";
+    data.processed_by = "gemini-3-pro-preview";
     data.client_id = clientId;
+    data._pageInfo = pageInfo; // Include multi-page info
 
     res.json({
       success: true,
