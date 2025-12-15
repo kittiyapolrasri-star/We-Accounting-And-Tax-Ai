@@ -580,6 +580,8 @@ const AppContent: React.FC = () => {
             ? clients.find(c => c.id === selectedClientId)
             : clients[0];
 
+        const targetClientId = currentClient?.id || 'UNASSIGNED';
+
         // Optimistic Update
         const initialDoc: DocumentRecord = {
             id: tempId,
@@ -588,29 +590,64 @@ const AppContent: React.FC = () => {
             status: 'processing',
             assigned_to: null,
             client_name: currentClient?.name || 'Processing...',
-            clientId: currentClient?.id,
+            clientId: targetClientId,
             amount: 0,
-            ai_data: null
+            ai_data: null,
+            mime_type: file.type
         };
 
         setDocuments(prev => [initialDoc, ...prev]);
 
         try {
-            // 1. Analyze with Gemini via Cloud Functions (secure)
-            const rawResult = await analyzeDocument(file);
+            // 1. Upload file to Firebase Storage (if configured)
+            let fileUrl: string | undefined;
+            let storagePath: string | undefined;
 
-            // 2. Post-Process with Automation Engine
+            try {
+                const { uploadDocument } = await import('./services/documentStorage');
+                const uploadResult = await uploadDocument(
+                    file,
+                    targetClientId,
+                    'invoice', // Document type - could be detected from AI later
+                    CURRENT_USER_ID
+                );
+                if (uploadResult.success) {
+                    fileUrl = uploadResult.fileUrl;
+                    storagePath = uploadResult.storagePath;
+                    console.log('✅ File uploaded to storage:', storagePath);
+                }
+            } catch (uploadError) {
+                console.warn('File upload skipped (Storage not configured):', uploadError);
+            }
+
+            // 2. Analyze with Gemini via Cloud Functions (secure)
+            const rawResult = await analyzeDocument(file, targetClientId, currentClient?.name);
+
+            // 3. Post-Process with Automation Engine
             const refinedResult = applyVendorRules(rawResult);
+
+            // 4. Create finalized document with storage references and period indexing
+            const uploadDate = new Date();
+            const year = uploadDate.getFullYear();
+            const month = String(uploadDate.getMonth() + 1).padStart(2, '0');
 
             const finalizedDoc: DocumentRecord = {
                 id: `D${Date.now()}`,
-                uploaded_at: new Date().toISOString(),
+                uploaded_at: uploadDate.toISOString(),
                 filename: file.name,
                 status: 'pending_review',
                 assigned_to: null,
-                client_name: refinedResult.parties.client_company.name || 'Unknown',
+                client_name: refinedResult.parties.client_company.name || currentClient?.name || 'Unknown',
+                clientId: targetClientId,
                 amount: refinedResult.financials.grand_total,
-                ai_data: refinedResult
+                ai_data: refinedResult,
+                file_url: fileUrl,
+                storage_path: storagePath,
+                mime_type: file.type,
+                // Period indexing for efficient queries
+                year,
+                month,
+                period: `${year}-${month}`
             };
 
             // Persist to DB
@@ -619,7 +656,7 @@ const AppContent: React.FC = () => {
             // Update State (Replace Temp with Final)
             setDocuments(currentDocs => currentDocs.map(d => d.id === tempId ? finalizedDoc : d));
 
-            await logAction('UPLOAD', `Successfully processed file: ${file.name}`);
+            await logAction('UPLOAD', `Successfully processed file: ${file.name}${storagePath ? ' (stored)' : ''}`);
 
         } catch (error) {
             console.error("Processing failed", error);
