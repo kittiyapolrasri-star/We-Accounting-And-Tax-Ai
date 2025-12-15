@@ -4,7 +4,7 @@ import {
   Building, FilePlus, BarChart3, ChevronRight, ChevronDown, Scale,
   Briefcase, Globe, DollarSign, Database, RefreshCw, Send, Zap,
   GitBranch, Gauge, FolderKanban, UsersRound, Calendar, Bot,
-  ClipboardList, Crown, ShoppingCart, Bell
+  ClipboardList, Crown, ShoppingCart, Bell, FileSpreadsheet
 } from 'lucide-react';
 
 interface Props {
@@ -59,7 +59,7 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
     return items.some(item => item.id === activeView);
   };
 
-  // Menu structure with groups
+  // Menu structure with groups - OPTIMIZED: Reduced duplication
   const menuGroups: MenuGroup[] = [
     {
       id: 'dashboard',
@@ -67,10 +67,8 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
       icon: LayoutDashboard,
       defaultOpen: true,
       items: [
-        { id: 'dashboard', label: 'ภาพรวมผู้บริหาร', icon: LayoutDashboard },
-        { id: 'ceo-dashboard', label: 'CEO Dashboard', icon: Crown, badge: 'NEW' },
-        { id: 'command-center', label: 'ศูนย์ควบคุมงาน', icon: BarChart3 },
-        { id: 'smart-dashboard', label: 'แดชบอร์ดอัจฉริยะ', icon: Gauge },
+        { id: 'smart-dashboard', label: 'Dashboard หลัก', icon: LayoutDashboard },
+        { id: 'ceo-dashboard', label: 'CEO Command Center', icon: Crown },
       ]
     },
     {
@@ -80,22 +78,21 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
       defaultOpen: true,
       items: [
         { id: 'workplace', label: 'งานของฉัน', icon: Briefcase },
-        { id: 'task-board', label: 'บอร์ดงาน (Kanban)', icon: FolderKanban, badge: 'NEW' },
-        { id: 'task-timeline', label: 'Timeline (Gantt)', icon: GitBranch, badge: 'NEW' },
-        { id: 'accounting-workflow', label: 'Workflow อัตโนมัติ', icon: Zap, badge: 'NEW' },
-        { id: 'recurring-tasks', label: 'งานประจำอัตโนมัติ', icon: RefreshCw, badge: 'NEW' },
+        { id: 'task-board', label: 'บอร์ดงาน (Kanban)', icon: FolderKanban },
+        { id: 'task-timeline', label: 'Timeline (Gantt)', icon: GitBranch },
         { id: 'documents', label: 'ทะเบียนเอกสาร', icon: FileText },
         { id: 'reconciliation', label: 'กระทบยอดธนาคาร', icon: Scale },
       ]
     },
     {
-      id: 'client',
+      id: 'data',
       label: 'ลูกค้า & ข้อมูล',
       icon: Building,
       items: [
         { id: 'clients', label: 'ทะเบียนลูกค้า', icon: Building },
         { id: 'master-data', label: 'ข้อมูลหลัก', icon: Database },
-        { id: 'ecommerce-sync', label: 'เชื่อม E-Commerce', icon: ShoppingCart, badge: 'BETA' },
+        { id: 'sales-import', label: 'นำเข้ายอดขาย', icon: FileSpreadsheet, badge: 'NEW' },
+        { id: 'ecommerce-sync', label: 'เชื่อม E-Commerce', icon: ShoppingCart },
       ]
     },
     {
@@ -114,21 +111,22 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
     },
     {
       id: 'team',
-      label: 'ทีมงาน & AI',
+      label: 'ทีมงาน',
       icon: UsersRound,
       items: [
         { id: 'staff', label: 'จัดการทีมงาน', icon: Users },
-        { id: 'workload', label: 'Workload Dashboard', icon: BarChart3, badge: 'NEW' },
+        { id: 'workload', label: 'Workload Dashboard', icon: BarChart3 },
         { id: 'notifications', label: 'การแจ้งเตือน', icon: Bell },
-        { id: 'workflow', label: 'ระบบอนุมัติ', icon: GitBranch },
       ]
     },
     {
-      id: 'settings',
-      label: 'ตั้งค่าระบบ',
-      icon: Settings,
+      id: 'automation',
+      label: 'อัตโนมัติ & AI',
+      icon: Zap,
       items: [
-        { id: 'automation', label: 'ระบบอัตโนมัติ', icon: Zap },
+        { id: 'accounting-workflow', label: 'Workflow บัญชี', icon: Zap },
+        { id: 'recurring-tasks', label: 'งานประจำอัตโนมัติ', icon: RefreshCw },
+        { id: 'automation', label: 'ตั้งค่า Automation', icon: Settings },
         { id: 'ai-agents', label: 'AI Agents', icon: Bot, badge: 'BETA' },
       ]
     },

@@ -47,6 +47,7 @@ import TaskTimeline from './components/TaskTimeline';
 import NotificationCenter, { NotificationBell } from './components/NotificationCenter';
 import ECommerceSyncDashboard from './components/ECommerceSyncDashboard';
 import RecurringTasksManager from './components/RecurringTasksManager';
+import SalesDataImport from './components/SalesDataImport';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
@@ -1077,6 +1078,18 @@ const AppContent: React.FC = () => {
                     clients={clients}
                     onRunScheduler={(result) => {
                         showNotification(`สร้าง ${result.tasksCreated} งานจาก ${result.templatesProcessed} templates`, 'success');
+                    }}
+                />;
+            case 'sales-import':
+                const salesClient = selectedClientId ? clients.find(c => c.id === selectedClientId) : clients[0];
+                return <SalesDataImport
+                    clientId={salesClient?.id || ''}
+                    clientName={salesClient?.name || 'ไม่ได้เลือกลูกค้า'}
+                    onImportComplete={(data) => {
+                        showNotification(`นำเข้า ${data.transactions.length} รายการ พร้อมสร้าง ${data.glEntries.length} รายการบัญชี`, 'success');
+                    }}
+                    onGenerateGL={(entries) => {
+                        showNotification(`บันทึกบัญชี ${entries.length} รายการสำเร็จ`, 'success');
                     }}
                 />;
             case 'tax-calendar':

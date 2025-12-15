@@ -104,10 +104,19 @@ export type StaffRole = 'Manager' | 'Senior Accountant' | 'Junior Accountant' | 
 export interface Staff {
   id: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
   role: StaffRole;
   avatar_url?: string;
   active_tasks: number;
   email: string;
+  status?: 'active' | 'inactive' | 'on_leave';
+  phone?: string;
+  department?: string;
+  assigned_clients?: string[];
+  skills?: string[];
+  workload_capacity?: number; // Max tasks they can handle
+  hourly_rate?: number; // For payroll
 }
 
 export type DocumentStatus = 'uploading' | 'processing' | 'pending_review' | 'in_progress' | 'approved' | 'rejected' | 'reconciled';
@@ -184,16 +193,21 @@ export interface MonthlyWorkflow {
 export interface Client {
   id: string;
   name: string;
+  company_name?: string; // Alias for name
   tax_id: string;
-  address?: string; // Added
+  address?: string;
   industry: string;
   contact_person: string;
+  contact_email?: string;
+  contact_phone?: string;
   status: 'Active' | 'Suspended';
-  assigned_staff_id: string; // The specific human responsible
+  assigned_staff_id: string;
   last_closing_date: string;
-  current_workflow: MonthlyWorkflow; // Added for Command Center
-  client_requests?: ClientRequest[]; // NEW: To-Do list for client
-  published_reports?: PublishedReport[]; // NEW: Reports available for client
+  current_workflow?: MonthlyWorkflow; // Made optional to prevent errors
+  client_requests?: ClientRequest[];
+  published_reports?: PublishedReport[];
+  branches?: string[]; // For multi-branch clients
+  ecommerce_platforms?: string[]; // Linked platforms
 }
 
 export interface TaxReportSummary {

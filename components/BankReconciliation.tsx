@@ -21,7 +21,7 @@ interface Props {
 const BankReconciliation: React.FC<Props> = ({ documents, clients, onPostAdjustment }) => {
   const [selectedClientId, setSelectedClientId] = useState<string>(clients[0]?.id || '');
   const [bankTxns, setBankTxns] = useState<BankTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start as false, not true
   const [selectedTxn, setSelectedTxn] = useState<BankTransaction | null>(null);
   const [adjustment, setAdjustment] = useState<{ diff: number, type: 'fee' | 'interest' | 'other', docId: string | null } | null>(null);
   const [activeTab, setActiveTab] = useState<'reconcile' | 'auto-match' | 'summary' | 'import'>('reconcile');
@@ -29,22 +29,34 @@ const BankReconciliation: React.FC<Props> = ({ documents, clients, onPostAdjustm
   const [autoMatchResults, setAutoMatchResults] = useState<MatchResult[]>([]);
   const [isAutoMatching, setIsAutoMatching] = useState(false);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load Real Data from Firestore specific to the selected client
   useEffect(() => {
     const loadTxns = async () => {
-      if (!selectedClientId) return;
+      // Skip loading if no client selected
+      if (!selectedClientId) {
+        setLoading(false);
+        setBankTxns([]);
+        return;
+      }
+
       setLoading(true);
+      setLoadError(null);
+
       try {
         const data = await databaseService.getBankTransactionsByClient(selectedClientId);
-        setBankTxns(data);
+        setBankTxns(data || []);
       } catch (e) {
-        console.error(e);
+        console.error('Failed to load bank transactions:', e);
+        setLoadError('ไม่สามารถโหลดข้อมูลธนาคารได้');
+        setBankTxns([]);
       } finally {
         setLoading(false);
       }
     };
+
     loadTxns();
   }, [selectedClientId]);
 
@@ -435,15 +447,14 @@ const BankReconciliation: React.FC<Props> = ({ documents, clients, onPostAdjustm
                     )}
 
                     <div className="ml-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        result.matchType === 'exact' ? 'bg-green-100 text-green-700' :
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${result.matchType === 'exact' ? 'bg-green-100 text-green-700' :
                         result.matchType === 'fuzzy' ? 'bg-blue-100 text-blue-700' :
-                        result.matchType === 'partial' ? 'bg-amber-100 text-amber-700' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
+                          result.matchType === 'partial' ? 'bg-amber-100 text-amber-700' :
+                            'bg-slate-100 text-slate-600'
+                        }`}>
                         {result.matchType === 'exact' ? 'Exact' :
-                         result.matchType === 'fuzzy' ? 'Fuzzy' :
-                         result.matchType === 'partial' ? 'Partial' : 'No Match'}
+                          result.matchType === 'fuzzy' ? 'Fuzzy' :
+                            result.matchType === 'partial' ? 'Partial' : 'No Match'}
                       </span>
                       <p className="text-xs text-slate-400 mt-1">Score: {result.score}</p>
                     </div>
@@ -523,14 +534,12 @@ const BankReconciliation: React.FC<Props> = ({ documents, clients, onPostAdjustm
           </div>
 
           {/* Difference */}
-          <div className={`mt-6 p-4 rounded-xl ${
-            summary.difference === 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
-          }`}>
+          <div className={`mt-6 p-4 rounded-xl ${summary.difference === 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+            }`}>
             <div className="flex items-center justify-between">
               <span className="font-medium">ยอดผลต่าง</span>
-              <span className={`text-2xl font-bold font-mono ${
-                summary.difference === 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
+              <span className={`text-2xl font-bold font-mono ${summary.difference === 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
                 {formatCurrency(summary.difference)}
               </span>
             </div>
@@ -818,7 +827,7 @@ const BankReconciliation: React.FC<Props> = ({ documents, clients, onPostAdjustm
   );
 
   return (
-    <div className="animate-in fade-in duration-500 h-full flex flex-col relative p-6">
+    <div className="h-full flex flex-col bg-slate-50">
       {/* Adjustment Modal */}
       {adjustment && selectedTxn && (
         <div className="absolute inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
@@ -877,69 +886,95 @@ const BankReconciliation: React.FC<Props> = ({ documents, clients, onPostAdjustm
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">ระบบกระทบยอดธนาคารอัจฉริยะ</h2>
-          <p className="text-slate-500">Intelligent Bank Reconciliation with AI Auto-matching</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Building2 className="absolute left-3 top-2.5 text-slate-400" size={16} />
-            <select
-              value={selectedClientId}
-              onChange={(e) => setSelectedClientId(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-100 outline-none min-w-[200px]"
-            >
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+      {/* Clean Minimal Header */}
+      <div className="bg-white border-b border-slate-200 px-6 py-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-slate-100 rounded-xl">
+              <ArrowRightLeft size={24} className="text-slate-700" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">ระบบกระทบยอดธนาคาร</h1>
+              <p className="text-sm text-slate-500">Bank Reconciliation with AI Auto-matching</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Building2 className="absolute left-3 top-2.5 text-slate-400" size={16} />
+              <select
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-100 outline-none min-w-[200px]"
+              >
+                {clients.length === 0 && <option value="">ไม่มีลูกค้า</option>}
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      {!loading && renderStatsCards()}
+      <div className="flex-1 p-6 overflow-auto">
+        {/* Stats Cards */}
+        {!loading && clients.length > 0 && renderStatsCards()}
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-slate-200 pb-1">
-        {[
-          { id: 'reconcile', label: 'กระทบยอด', icon: ArrowRightLeft },
-          { id: 'auto-match', label: 'Auto-Match', icon: Zap },
-          { id: 'summary', label: 'สรุป', icon: BarChart3 },
-          { id: 'import', label: 'นำเข้า', icon: Upload },
-        ].map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
-                isActive
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-slate-200 pb-1">
+          {[
+            { id: 'reconcile', label: 'กระทบยอด', icon: ArrowRightLeft },
+            { id: 'auto-match', label: 'Auto-Match', icon: Zap },
+            { id: 'summary', label: 'สรุป', icon: BarChart3 },
+            { id: 'import', label: 'นำเข้า', icon: Upload },
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${isActive
                   ? 'bg-white text-blue-600 border border-slate-200 border-b-white -mb-px'
                   : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <Icon size={18} />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Tab Content */}
-      {loading ? (
-        <div className="h-full flex items-center justify-center">
-          <Loader2 className="animate-spin text-blue-600" size={32} />
+                  }`}
+              >
+                <Icon size={18} />
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
-      ) : (
-        <>
-          {activeTab === 'reconcile' && renderReconcileTab()}
-          {activeTab === 'auto-match' && renderAutoMatchTab()}
-          {activeTab === 'summary' && renderSummaryTab()}
-          {activeTab === 'import' && renderImportTab()}
-        </>
-      )}
+
+        {/* Tab Content */}
+        {loading ? (
+          <div className="h-64 flex flex-col items-center justify-center gap-4">
+            <Loader2 className="animate-spin text-blue-600" size={32} />
+            <p className="text-slate-500 text-sm">กำลังโหลดข้อมูล...</p>
+          </div>
+        ) : loadError ? (
+          <div className="h-64 flex flex-col items-center justify-center gap-4">
+            <AlertTriangle size={48} className="text-amber-500" />
+            <p className="text-slate-600">{loadError}</p>
+            <button
+              onClick={() => setSelectedClientId(selectedClientId)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              ลองใหม่
+            </button>
+          </div>
+        ) : clients.length === 0 ? (
+          <div className="h-64 flex flex-col items-center justify-center gap-4">
+            <Building2 size={48} className="text-slate-300" />
+            <p className="text-slate-500">กรุณาเพิ่มข้อมูลลูกค้าก่อนเพื่อใช้งาน</p>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'reconcile' && renderReconcileTab()}
+            {activeTab === 'auto-match' && renderAutoMatchTab()}
+            {activeTab === 'summary' && renderSummaryTab()}
+            {activeTab === 'import' && renderImportTab()}
+          </>
+        )}
+      </div>
     </div>
   );
 };

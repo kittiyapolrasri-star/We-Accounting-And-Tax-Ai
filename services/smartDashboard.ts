@@ -180,7 +180,7 @@ export const calculateKPIs = (
 
   // 5. Active Clients
   const activeClients = clients.filter(c =>
-    !c.current_workflow.is_locked && c.current_workflow.closing_status !== 'Filed/Closed'
+    !c.current_workflow?.is_locked && c.current_workflow?.closing_status !== 'Filed/Closed'
   ).length;
 
   kpis.push({
@@ -195,7 +195,7 @@ export const calculateKPIs = (
   });
 
   // 6. Total Issues
-  const totalIssues = clients.reduce((sum, c) => sum + c.current_workflow.issues.length, 0);
+  const totalIssues = clients.reduce((sum, c) => sum + (c.current_workflow?.issues?.length || 0), 0);
 
   kpis.push({
     id: 'total-issues',
@@ -211,7 +211,7 @@ export const calculateKPIs = (
 
   // 7. Clients Ready for Filing
   const readyForFiling = clients.filter(c =>
-    c.current_workflow.closing_status === 'Ready to File'
+    c.current_workflow?.closing_status === 'Ready to File'
   ).length;
 
   kpis.push({
@@ -310,9 +310,9 @@ export const generateAlerts = (
   }
 
   // Check for clients with issues
-  const clientsWithIssues = clients.filter(c => c.current_workflow.issues.length > 0);
+  const clientsWithIssues = clients.filter(c => (c.current_workflow?.issues?.length || 0) > 0);
   if (clientsWithIssues.length > 0) {
-    const totalIssues = clientsWithIssues.reduce((sum, c) => sum + c.current_workflow.issues.length, 0);
+    const totalIssues = clientsWithIssues.reduce((sum, c) => sum + (c.current_workflow?.issues?.length || 0), 0);
     alerts.push({
       id: `client-issues-${now.getTime()}`,
       type: totalIssues > 10 ? 'critical' : 'warning',
@@ -381,12 +381,12 @@ export const generateActionItems = (
 
   // Action: Review pending documents
   const pendingReview = documents.filter(d => d.status === 'pending_review');
-  pendingReview.slice(0, 10).forEach(doc => {
+  pendingReview.slice(0, 10).forEach((doc, index) => {
     const uploadDate = new Date(doc.uploaded_at);
     const daysSince = Math.floor((now.getTime() - uploadDate.getTime()) / (1000 * 60 * 60 * 24));
 
     items.push({
-      id: `review-${doc.id}`,
+      id: `review-${doc.id}-${index}-${now.getTime()}`,
       priority: daysSince >= 3 ? 'urgent' : daysSince >= 1 ? 'high' : 'medium',
       type: 'review',
       title: `Review: ${doc.filename}`,
@@ -402,8 +402,8 @@ export const generateActionItems = (
   });
 
   // Action: Resolve client issues
-  clients.forEach(client => {
-    client.current_workflow.issues.forEach(issue => {
+  clients.filter(c => c.current_workflow?.issues?.length).forEach(client => {
+    (client.current_workflow?.issues || []).forEach(issue => {
       items.push({
         id: `issue-${issue.id}`,
         priority: issue.severity === 'High' ? 'urgent' : issue.severity === 'Medium' ? 'high' : 'medium',
@@ -422,7 +422,7 @@ export const generateActionItems = (
 
   // Action: Period closing for clients ready
   const readyForClosing = clients.filter(c =>
-    c.current_workflow.closing_status === 'Ready to File' && !c.current_workflow.is_locked
+    c.current_workflow?.closing_status === 'Ready to File' && !c.current_workflow?.is_locked
   );
   readyForClosing.forEach(client => {
     items.push({
@@ -441,7 +441,7 @@ export const generateActionItems = (
 
   // Action: Bank reconciliation needed (clients with pending documents)
   const needsReconciliation = clients.filter(c =>
-    c.current_workflow.pending_count > 0
+    (c.current_workflow?.pending_count || 0) > 0
   );
   needsReconciliation.slice(0, 5).forEach(client => {
     items.push({
@@ -503,11 +503,11 @@ export const calculateSummary = (
 
   // Client metrics
   const activeClients = clients.filter(c =>
-    !c.current_workflow.is_locked
+    !c.current_workflow?.is_locked
   ).length;
 
   // Task metrics
-  const totalIssues = clients.reduce((sum, c) => sum + c.current_workflow.issues.length, 0);
+  const totalIssues = clients.reduce((sum, c) => sum + (c.current_workflow?.issues?.length || 0), 0);
 
   // Calculate upcoming deadlines (tax filing dates in current month)
   const currentDay = now.getDate();
@@ -546,13 +546,13 @@ export const calculateClientHealth = (
     const pendingDocs = clientDocs.filter(d =>
       d.status === 'pending_review' || d.status === 'processing'
     ).length;
-    const issuesCount = client.current_workflow.issues.length;
+    const issuesCount = client.current_workflow?.issues?.length || 0;
 
     // Calculate score (0-100)
     let score = 100;
     score -= pendingDocs * 5;  // -5 per pending doc
     score -= issuesCount * 10; // -10 per issue
-    if (client.current_workflow.is_locked) score -= 0; // Locked is fine
+    if (client.current_workflow?.is_locked) score -= 0; // Locked is fine
     score = Math.max(0, Math.min(100, score));
 
     // Determine status
