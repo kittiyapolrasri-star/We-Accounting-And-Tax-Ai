@@ -40,6 +40,7 @@ import TaxCalendar from './components/TaxCalendar';
 import WHTCertificateManager from './components/WHTCertificateManager';
 import VATReturnManager from './components/VATReturnManager';
 import ErrorBoundary from './components/ErrorBoundary';
+import FloatingAIPanel from './components/FloatingAIPanel';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
@@ -153,9 +154,13 @@ const AppContent: React.FC = () => {
 
   // --- ACTIONS ---
 
+  // Legacy showNotification - now uses Toast
   const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
-      setNotification({ message: msg, type });
-      setTimeout(() => setNotification(null), 3000);
+      if (type === 'success') {
+        toastSuccess('สำเร็จ', msg);
+      } else {
+        toastError('เกิดข้อผิดพลาด', msg);
+      }
   };
 
   const handleSignOut = async () => {
@@ -1131,6 +1136,19 @@ const AppContent: React.FC = () => {
             {renderContent()}
         </main>
       </div>
+
+      {/* Floating AI Assistant Panel */}
+      {currentView !== 'client-portal' && (
+        <FloatingAIPanel
+          onCalculateTaxes={() => calculateTaxes(documents, selectedClientId || undefined)}
+          onAutoReconcile={() => autoReconcile([], glEntries, documents)}
+          onAutoAssignTasks={() => autoAssignTasks(tasks, staff)}
+          onCheckDeadlines={() => checkDeadlines(tasks, clients, documents)}
+          isProcessing={agentProcessing}
+          onSuccess={toastSuccess}
+          onError={toastError}
+        />
+      )}
     </div>
   );
 };
