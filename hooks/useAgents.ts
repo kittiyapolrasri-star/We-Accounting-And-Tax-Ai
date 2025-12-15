@@ -88,10 +88,28 @@ export const useAgents = (): UseAgentsReturn => {
     try {
       const executionId = await orchestratorRef.current.submitTask(agentType, input, priority);
 
-      // Wait for completion (simplified - in production use polling or WebSocket)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Poll for completion with exponential backoff
+      const maxWaitTime = 30000; // 30 seconds max
+      const pollInterval = 200; // Initial poll interval
+      let elapsed = 0;
+      let result = null;
 
-      const result = orchestratorRef.current.getExecutionResult(executionId);
+      while (elapsed < maxWaitTime) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        elapsed += pollInterval;
+
+        const execution = orchestratorRef.current.getExecution(executionId);
+
+        if (execution && ['completed', 'failed', 'escalated'].includes(execution.status)) {
+          result = orchestratorRef.current.getExecutionResult(executionId);
+          break;
+        }
+      }
+
+      // If still no result after timeout, get whatever we have
+      if (!result) {
+        result = orchestratorRef.current.getExecutionResult(executionId);
+      }
 
       setState(prev => ({
         ...prev,

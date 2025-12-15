@@ -122,8 +122,8 @@ export const createWHTCertificate = (
   // Determine payee type
   const payeeTaxId = aiData.parties.counterparty.tax_id;
   const isIndividual = payeeTaxId.startsWith('1') ||
-                       payeeTaxId.startsWith('2') ||
-                       payeeTaxId.startsWith('3');
+    payeeTaxId.startsWith('2') ||
+    payeeTaxId.startsWith('3');
 
   const formType: 'PND3' | 'PND53' = isIndividual ? 'PND3' : 'PND53';
 
@@ -208,7 +208,7 @@ export const generateWHTCertificateHTML = (cert: WHTCertificateData): string => 
     const date = new Date(dateStr);
     const day = date.getDate();
     const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-                    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
     const month = months[date.getMonth()];
     const year = date.getFullYear() + 543;
     return `${day} ${month} ${year}`;
@@ -408,13 +408,31 @@ export const calculateWHTSummary = (certificates: WHTCertificateData[]) => {
   };
 };
 
+/**
+ * Alias for generateBatchWHTCertificates (for engine compatibility)
+ */
+export const generateWHTCertificates = (
+  client: Client,
+  documents: DocumentRecord[],
+  period: string
+): WHTCertificateData[] => {
+  // Filter documents for the given period
+  const periodDocs = documents.filter(d =>
+    d.ai_data?.header_data?.issue_date?.startsWith(period)
+  );
+
+  return generateBatchWHTCertificates(periodDocs, client, '001', 1);
+};
+
 export const whtCertificateService = {
   generateCertificateNo,
   createWHTCertificate,
   generateWHTCertificateHTML,
   generateBatchWHTCertificates,
+  generateWHTCertificates,
   calculateWHTSummary,
   WHT_INCOME_TYPES,
 };
 
 export default whtCertificateService;
+
