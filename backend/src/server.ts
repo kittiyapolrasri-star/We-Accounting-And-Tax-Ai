@@ -21,6 +21,7 @@ import { assetsRouter } from './routes/assets';
 import { bankRouter } from './routes/bank';
 import { rulesRouter } from './routes/rules';
 import { tasksRouter } from './routes/tasks';
+import { reportsRouter } from './routes/reports';
 import { verifyToken } from './middleware/auth';
 
 const app = express();
@@ -102,6 +103,7 @@ app.use('/api/assets', verifyToken, assetsRouter);
 app.use('/api/bank', verifyToken, bankRouter);
 app.use('/api/rules', verifyToken, rulesRouter);
 app.use('/api/tasks', verifyToken, tasksRouter);
+app.use('/api/reports', verifyToken, reportsRouter);
 
 // ======================
 // ERROR HANDLING

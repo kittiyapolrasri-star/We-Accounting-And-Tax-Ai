@@ -560,6 +560,68 @@ export const deleteTask = async (taskId: string) => {
 };
 
 // =====================================
+// FINANCIAL REPORTS FUNCTIONS
+// =====================================
+
+export const getIncomeStatement = async (
+    clientId: string,
+    periodStart?: string,
+    periodEnd?: string,
+    period?: string
+) => {
+    const params = new URLSearchParams({ clientId });
+    if (period) params.append('period', period);
+    if (periodStart) params.append('periodStart', periodStart);
+    if (periodEnd) params.append('periodEnd', periodEnd);
+
+    const result = await apiRequest<any>(`/api/reports/income-statement?${params}`);
+    return result.data;
+};
+
+export const getBalanceSheet = async (
+    clientId: string,
+    asOfDate?: string,
+    period?: string
+) => {
+    const params = new URLSearchParams({ clientId });
+    if (asOfDate) params.append('asOfDate', asOfDate);
+    if (period) params.append('period', period);
+
+    const result = await apiRequest<any>(`/api/reports/balance-sheet?${params}`);
+    return result.data;
+};
+
+export const getTrialBalance = async (clientId: string, period: string) => {
+    const result = await apiRequest<any>(`/api/gl/trial-balance?clientId=${clientId}&period=${period}`);
+    return result.data;
+};
+
+export const getFinancialSummary = async (clientId: string, period?: string) => {
+    const params = new URLSearchParams({ clientId });
+    if (period) params.append('period', period);
+
+    const result = await apiRequest<any>(`/api/reports/summary?${params}`);
+    return result.data;
+};
+
+export const getIncomeStatementHTML = async (
+    clientId: string,
+    period?: string,
+    periodStart?: string,
+    periodEnd?: string
+) => {
+    const params = new URLSearchParams({ clientId });
+    if (period) params.append('period', period);
+    if (periodStart) params.append('periodStart', periodStart);
+    if (periodEnd) params.append('periodEnd', periodEnd);
+
+    const response = await fetch(`${API_BASE_URL}/api/reports/income-statement/html?${params}`, {
+        headers: getAuthHeaders(),
+    });
+    return response.text();
+};
+
+// =====================================
 // EXPORT DATABASE SERVICE OBJECT
 // =====================================
 
@@ -629,9 +691,17 @@ export const databaseService = {
     completeTask,
     deleteTask,
 
+    // Financial Reports
+    getIncomeStatement,
+    getBalanceSheet,
+    getTrialBalance,
+    getFinancialSummary,
+    getIncomeStatementHTML,
+
     // Meta
     isDemoMode: false,
 };
 
 export default databaseService;
+
 
