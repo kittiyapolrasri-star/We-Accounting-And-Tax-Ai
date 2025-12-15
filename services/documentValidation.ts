@@ -319,7 +319,9 @@ export const validateAmount = (
     amount: number,
     options: { min?: number; max?: number; allowNegative?: boolean } = {}
 ): { valid: boolean; error?: string } => {
-    const { min = 0, max = 100000000, allowNegative = false } = options;
+    const { max = 100000000, allowNegative = false } = options;
+    // If allowNegative, use provided min or no min. Otherwise default min is 0
+    const min = options.min !== undefined ? options.min : (allowNegative ? -Infinity : 0);
 
     if (isNaN(amount)) {
         return { valid: false, error: 'Amount is not a valid number' };
