@@ -74,10 +74,10 @@ export const analyzeDocumentHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // Initialize Gemini
+    // Initialize Gemini 2.0 Flash - Latest model (Dec 2024)
     const genAI = new GoogleGenerativeAI(getApiKey());
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-pro",
+      model: "gemini-2.0-flash",
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: {
         temperature: 0.1,
