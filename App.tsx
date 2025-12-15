@@ -622,8 +622,37 @@ const AppContent: React.FC = () => {
                 console.warn('File upload skipped (Storage not configured):', uploadError);
             }
 
+            // 1.5 Image Enhancement for low-quality images
+            let processableFile = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    const { needsEnhancement, enhanceImage } = await import('./services/imageEnhancement');
+                    const needsWork = await needsEnhancement(file);
+
+                    if (needsWork) {
+                        console.log('🔧 Enhancing image for better OCR...');
+                        const enhanced = await enhanceImage(file, {
+                            autoCorrect: true,
+                            sharpen: true,
+                            contrast: 1.2,
+                        });
+
+                        if (enhanced.enhanced) {
+                            // Create a new File from enhanced data
+                            const base64Response = await fetch(enhanced.dataUrl);
+                            const blob = await base64Response.blob();
+                            processableFile = new File([blob], file.name, { type: enhanced.mimeType });
+                            console.log(`✅ Image enhanced: ${enhanced.corrections.join(', ')}`);
+                        }
+                    }
+                } catch (enhanceError) {
+                    console.warn('Image enhancement skipped:', enhanceError);
+                    // Continue with original file
+                }
+            }
+
             // 2. Analyze with Gemini via Cloud Functions (secure)
-            const rawResult = await analyzeDocument(file, targetClientId, currentClient?.name);
+            const rawResult = await analyzeDocument(processableFile, targetClientId, currentClient?.name);
 
             // 3. Post-Process with Automation Engine
             const refinedResult = applyVendorRules(rawResult);
