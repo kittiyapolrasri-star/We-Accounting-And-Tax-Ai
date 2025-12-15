@@ -372,6 +372,12 @@ export class AgentOrchestrator {
     return this.executions.get(executionId);
   }
 
+  // Get execution result (output only)
+  getExecutionResult(executionId: string): AgentOutput | undefined {
+    const execution = this.executions.get(executionId);
+    return execution?.output;
+  }
+
   // Get all executions for monitoring
   getAllExecutions(filters?: {
     agentType?: AgentType;

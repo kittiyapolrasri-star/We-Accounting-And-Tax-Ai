@@ -9,6 +9,10 @@ import { useAuth, AuthProvider } from './contexts/AuthContext';
 import Login from './components/Login';
 import { AnalysisState, DocumentRecord, Staff, AccountingResponse, Client, IssueTicket, VendorRule, PostedGLEntry, PublishedReport, FixedAsset, WorkflowStatus, ActivityLog } from './types';
 import { Task, TaskStatus } from './types/tasks';
+
+// Toast and Accessibility
+import { ToastContainer, useToast } from './components/Toast';
+import './styles/accessibility.css';
 import AnalysisResult from './components/AnalysisResult';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -35,12 +39,27 @@ import TaskDetailModal from './components/TaskDetailModal';
 import TaxCalendar from './components/TaxCalendar';
 import WHTCertificateManager from './components/WHTCertificateManager';
 import VATReturnManager from './components/VATReturnManager';
-import BankImport from './components/BankImport';
 import ErrorBoundary from './components/ErrorBoundary';
+import FloatingAIPanel from './components/FloatingAIPanel';
+
+// AI Agents Hook
+import { useAgents } from './hooks/useAgents';
 
 // Main App Content (requires authentication)
 const AppContent: React.FC = () => {
   const { user, signOut, isAuthenticated, loading: authLoading } = useAuth();
+
+  // Toast notifications
+  const { toasts, success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo, dismissToast } = useToast();
+
+  // AI Agents
+  const {
+    isProcessing: agentProcessing,
+    calculateTaxes,
+    autoReconcile,
+    autoAssignTasks,
+    checkDeadlines
+  } = useAgents();
 
   // --- STATE INITIALIZATION ---
   const [currentView, setCurrentView] = useState('dashboard');
@@ -135,9 +154,13 @@ const AppContent: React.FC = () => {
 
   // --- ACTIONS ---
 
+  // Legacy showNotification - now uses Toast
   const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
-      setNotification({ message: msg, type });
-      setTimeout(() => setNotification(null), 3000);
+      if (type === 'success') {
+        toastSuccess('สำเร็จ', msg);
+      } else {
+        toastError('เกิดข้อผิดพลาด', msg);
+      }
   };
 
   const handleSignOut = async () => {
@@ -1026,12 +1049,20 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 font-inter text-slate-900 overflow-hidden relative">
-      {/* Global Notification Toast */}
+    <div className="flex h-screen bg-slate-50 font-inter text-slate-900 overflow-hidden relative" role="application" aria-label="WE Accounting & Tax AI">
+      {/* Skip Link for Accessibility */}
+      <a href="#main-content" className="skip-link">
+        ข้ามไปยังเนื้อหาหลัก
+      </a>
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Legacy Notification (will be removed) */}
       {notification && (
           <div className={`absolute top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 fade-in ${
               notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
-          }`}>
+          }`} role="alert" aria-live="polite">
               {notification.type === 'success' ? <CheckCircle2 size={20} className="text-emerald-500" /> : <AlertCircle size={20} className="text-red-500" />}
               <span className="font-semibold text-sm">{notification.message}</span>
           </div>
@@ -1059,7 +1090,11 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Conditionally render sidebar based on view */}
-      {currentView !== 'client-portal' && <Sidebar activeView={currentView} onChangeView={setCurrentView} />}
+      {currentView !== 'client-portal' && (
+        <nav role="navigation" aria-label="เมนูหลัก">
+          <Sidebar activeView={currentView} onChangeView={setCurrentView} />
+        </nav>
+      )}
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         {currentView !== 'client-portal' && (
@@ -1089,17 +1124,31 @@ const AppContent: React.FC = () => {
                       onClick={handleSignOut}
                       className="ml-2 p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                       title="ออกจากระบบ"
+                      aria-label="ออกจากระบบ"
                     >
-                      <LogOut size={20} />
+                      <LogOut size={20} aria-hidden="true" />
                     </button>
                 </div>
             </header>
         )}
 
-        <main className="flex-1 overflow-y-auto p-0">
+        <main id="main-content" role="main" aria-label="เนื้อหาหลัก" className="flex-1 overflow-y-auto p-0">
             {renderContent()}
         </main>
       </div>
+
+      {/* Floating AI Assistant Panel */}
+      {currentView !== 'client-portal' && (
+        <FloatingAIPanel
+          onCalculateTaxes={() => calculateTaxes(documents, selectedClientId || undefined)}
+          onAutoReconcile={() => autoReconcile([], glEntries, documents)}
+          onAutoAssignTasks={() => autoAssignTasks(tasks, staff)}
+          onCheckDeadlines={() => checkDeadlines(tasks, clients, documents)}
+          isProcessing={agentProcessing}
+          onSuccess={toastSuccess}
+          onError={toastError}
+        />
+      )}
     </div>
   );
 };
