@@ -162,9 +162,11 @@ const AppContent: React.FC = () => {
     // --- ACTIONS ---
 
     // Legacy showNotification - now uses Toast
-    const showNotification = (msg: string, type: 'success' | 'error' = 'success') => {
+    const showNotification = (msg: string, type: 'success' | 'error' | 'warning' = 'success') => {
         if (type === 'success') {
             toastSuccess('สำเร็จ', msg);
+        } else if (type === 'warning') {
+            toastWarning('แจ้งเตือน', msg);
         } else {
             toastError('เกิดข้อผิดพลาด', msg);
         }
@@ -666,12 +668,53 @@ const AppContent: React.FC = () => {
         setUploadQueue(prev => prev.filter(f => f !== file));
     };
 
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         if (!event.target.files) return;
         const files: File[] = Array.from(event.target.files);
         if (files.length === 0) return;
-        setUploadQueue(prev => [...prev, ...files]);
-        files.forEach(file => processQueueItem(file));
+
+        // Import validation service dynamically to avoid circular deps
+        const { validateFile, classifyByFilename } = await import('./services/documentValidation');
+
+        const validFiles: File[] = [];
+
+        for (const file of files) {
+            // Pre-upload validation
+            const validation = validateFile(file);
+
+            if (!validation.valid) {
+                // Show error notification
+                showNotification(
+                    `❌ ${file.name}: ${validation.errors.map(e => e.messageTh).join(', ')}`,
+                    'error'
+                );
+                continue;
+            }
+
+            // Show warnings if any
+            if (validation.warnings.length > 0) {
+                showNotification(
+                    `⚠️ ${file.name}: ${validation.warnings.map(w => w.messageTh).join(', ')}`,
+                    'warning'
+                );
+            }
+
+            // Auto-classify by filename
+            const classification = classifyByFilename(file.name);
+            if (classification.confidence > 0.7) {
+                console.log(`📁 Auto-classified "${file.name}" as ${classification.docType} (${Math.round(classification.confidence * 100)}%)`);
+            }
+
+            validFiles.push(file);
+        }
+
+        if (validFiles.length > 0) {
+            setUploadQueue(prev => [...prev, ...validFiles]);
+            validFiles.forEach(file => processQueueItem(file));
+        }
+
+        // Reset input to allow re-selecting same file
+        event.target.value = '';
     };
 
     const handleClientPortalUpload = (files: File[], client: Client) => {
