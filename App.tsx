@@ -46,6 +46,7 @@ import CEODashboard from './components/CEODashboard';
 import TaskTimeline from './components/TaskTimeline';
 import NotificationCenter, { NotificationBell } from './components/NotificationCenter';
 import ECommerceSyncDashboard from './components/ECommerceSyncDashboard';
+import RecurringTasksManager from './components/RecurringTasksManager';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
