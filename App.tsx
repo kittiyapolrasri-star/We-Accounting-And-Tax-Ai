@@ -1071,6 +1071,14 @@ const AppContent: React.FC = () => {
                         showNotification(`นำเข้า ${count} คำสั่งซื้อแล้ว`, 'success');
                     }}
                 />;
+            case 'recurring-tasks':
+                return <RecurringTasksManager
+                    staff={staff}
+                    clients={clients}
+                    onRunScheduler={(result) => {
+                        showNotification(`สร้าง ${result.tasksCreated} งานจาก ${result.templatesProcessed} templates`, 'success');
+                    }}
+                />;
             case 'tax-calendar':
                 return <TaxCalendar
                     clients={clients}

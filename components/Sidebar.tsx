@@ -83,6 +83,7 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
         { id: 'task-board', label: 'บอร์ดงาน (Kanban)', icon: FolderKanban, badge: 'NEW' },
         { id: 'task-timeline', label: 'Timeline (Gantt)', icon: GitBranch, badge: 'NEW' },
         { id: 'accounting-workflow', label: 'Workflow อัตโนมัติ', icon: Zap, badge: 'NEW' },
+        { id: 'recurring-tasks', label: 'งานประจำอัตโนมัติ', icon: RefreshCw, badge: 'NEW' },
         { id: 'documents', label: 'ทะเบียนเอกสาร', icon: FileText },
         { id: 'reconciliation', label: 'กระทบยอดธนาคาร', icon: Scale },
       ]
