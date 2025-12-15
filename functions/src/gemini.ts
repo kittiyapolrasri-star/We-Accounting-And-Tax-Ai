@@ -113,7 +113,7 @@ export const analyzeDocumentHandler = async (req: Request, res: Response) => {
 
     // Add metadata
     data.processed_at = new Date().toISOString();
-    data.processed_by = "gemini-1.5-pro";
+    data.processed_by = "gemini-3-pro-preview";
     data.client_id = clientId;
 
     res.json({
