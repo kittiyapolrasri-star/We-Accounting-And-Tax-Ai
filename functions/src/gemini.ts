@@ -74,10 +74,11 @@ export const analyzeDocumentHandler = async (req: Request, res: Response) => {
       });
     }
 
-    // Initialize Gemini 2.0 Flash - Latest model (Dec 2024)
+    // Initialize Gemini 3 Pro - Google's most advanced reasoning model
+    // Launched Nov 2025 - Best reasoning, visual understanding & coding
     const genAI = new GoogleGenerativeAI(getApiKey());
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-3-pro-preview",
       systemInstruction: SYSTEM_PROMPT,
       generationConfig: {
         temperature: 0.1,
