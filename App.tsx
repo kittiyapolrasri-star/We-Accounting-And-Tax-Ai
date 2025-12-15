@@ -628,7 +628,28 @@ const AppContent: React.FC = () => {
             // 3. Post-Process with Automation Engine
             const refinedResult = applyVendorRules(rawResult);
 
-            // 4. Create finalized document with storage references and period indexing
+            // 4. Check for duplicates
+            try {
+                const { checkDuplicate } = await import('./services/documentValidation');
+                const invNumber = refinedResult.header_data.inv_number;
+                const vendorTaxId = refinedResult.parties.counterparty.tax_id;
+                const amount = refinedResult.financials.grand_total;
+                const date = refinedResult.header_data.issue_date;
+
+                // Get existing documents for this client
+                const existingDocs = documents.filter(d => d.clientId === targetClientId);
+                const duplicateCheck = await checkDuplicate(existingDocs, invNumber, vendorTaxId, amount, date);
+
+                if (duplicateCheck.isDuplicate) {
+                    const matchType = duplicateCheck.matchType === 'exact' ? 'เลขที่เอกสารซ้ำ' : 'ยอดเงินและคู่ค้าใกล้เคียง';
+                    showNotification(`⚠️ พบเอกสารที่อาจซ้ำ: ${matchType}`, 'warning');
+                    console.warn('Potential duplicate detected:', duplicateCheck.matches);
+                }
+            } catch (dupError) {
+                console.warn('Duplicate check failed (non-critical):', dupError);
+            }
+
+            // 5. Create finalized document with storage references and period indexing
             const uploadDate = new Date();
             const year = uploadDate.getFullYear();
             const month = String(uploadDate.getMonth() + 1).padStart(2, '0');
@@ -652,7 +673,7 @@ const AppContent: React.FC = () => {
                 period: `${year}-${month}`
             };
 
-            // Persist to DB
+            // 6. Persist to DB
             await databaseService.addDocument(finalizedDoc);
 
             // Update State (Replace Temp with Final)
