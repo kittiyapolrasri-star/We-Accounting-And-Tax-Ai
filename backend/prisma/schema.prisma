@@ -1,0 +1,266 @@
+// Prisma Schema for WE Accounting & Tax AI
+// Local PostgreSQL Database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== CLIENTS =====
+model Client {
+  id                  String   @id @default(uuid())
+  name                String
+  tax_id              String   @unique
+  address             String?
+  phone               String?
+  email               String?
+  contact_person      String?
+  status              String   @default("Active")
+  business_type       String?
+  vat_registered      Boolean  @default(true)
+  fiscal_year_end     String?  @default("12")
+  
+  // Workflow status
+  current_month       String?
+  vat_status         String?  @default("pending")
+  wht_status         String?  @default("pending")
+  closing_status     String?  @default("pending")
+  
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  
+  // Relations
+  documents           Document[]
+  gl_entries          GLEntry[]
+  bank_transactions   BankTransaction[]
+  fixed_assets        FixedAsset[]
+  vendor_rules        VendorRule[]
+  tasks               Task[]
+  
+  @@index([status])
+  @@index([tax_id])
+}
+
+// ===== DOCUMENTS =====
+model Document {
+  id                String   @id @default(uuid())
+  client_id         String
+  client            Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  filename          String
+  original_filename String
+  file_path         String?
+  file_url          String?
+  mime_type         String
+  file_size         Int?
+  
+  status            String   @default("pending_review") // pending_review, approved, rejected, posted
+  doc_type          String?  // invoice, receipt, bank_statement, etc.
+  
+  // Extracted data from AI
+  ai_data           Json?
+  confidence_score  Float?
+  
+  // Financial data
+  amount            Float?
+  vat_amount        Float?
+  wht_amount        Float?
+  vendor_name       String?
+  vendor_tax_id     String?
+  invoice_number    String?
+  invoice_date      DateTime?
+  
+  // Period indexing
+  year              Int
+  month             String
+  period            String   // Format: YYYY-MM
+  
+  // Audit
+  uploaded_by       String?
+  approved_by       String?
+  uploaded_at       DateTime @default(now())
+  approved_at       DateTime?
+  
+  @@index([client_id, period])
+  @@index([client_id, status])
+  @@index([year, month])
+}
+
+// ===== GL ENTRIES =====
+model GLEntry {
+  id                String   @id @default(uuid())
+  client_id         String
+  client            Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  date              DateTime
+  account_code      String
+  account_name      String
+  debit             Float    @default(0)
+  credit            Float    @default(0)
+  description       String?
+  
+  // Reference
+  source_doc_id     String?
+  journal_ref       String?
+  
+  // Period
+  year              Int
+  month             String
+  period            String
+  
+  // Audit
+  posted_by         String?
+  posted_at         DateTime @default(now())
+  
+  @@index([client_id, period])
+  @@index([client_id, account_code])
+  @@index([date])
+}
+
+// ===== BANK TRANSACTIONS =====
+model BankTransaction {
+  id                String   @id @default(uuid())
+  client_id         String
+  client            Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  date              DateTime
+  description       String
+  amount            Float
+  balance           Float?
+  
+  bank_account      String?
+  transaction_type  String?  // deposit, withdrawal, transfer
+  reference         String?
+  
+  // Reconciliation
+  status            String   @default("unmatched") // unmatched, matched, reconciled
+  matched_doc_id    String?
+  
+  // Period
+  year              Int
+  month             String
+  
+  created_at        DateTime @default(now())
+  
+  @@index([client_id, status])
+  @@index([date])
+}
+
+// ===== FIXED ASSETS =====
+model FixedAsset {
+  id                String   @id @default(uuid())
+  client_id         String
+  client            Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  name              String
+  asset_code        String?
+  category          String?
+  
+  purchase_date     DateTime
+  purchase_value    Float
+  useful_life       Int      // months
+  salvage_value     Float    @default(0)
+  
+  depreciation_method String  @default("straight_line")
+  accumulated_depreciation Float @default(0)
+  
+  status            String   @default("active") // active, disposed, fully_depreciated
+  disposal_date     DateTime?
+  disposal_value    Float?
+  
+  created_at        DateTime @default(now())
+  
+  @@index([client_id])
+}
+
+// ===== VENDOR RULES =====
+model VendorRule {
+  id                String   @id @default(uuid())
+  client_id         String?
+  client            Client?  @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  vendor_pattern    String   // Regex or keyword to match vendor name
+  default_account   String
+  default_doc_type  String?
+  wht_rate          Float?
+  description       String?
+  
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now())
+  
+  @@index([client_id])
+  @@index([vendor_pattern])
+}
+
+// ===== STAFF / USERS =====
+model Staff {
+  id                String   @id @default(uuid())
+  email             String   @unique
+  password_hash     String
+  name              String
+  role              String   @default("accountant") // admin, manager, senior_accountant, accountant
+  
+  assigned_clients  String[] // Array of client IDs
+  
+  is_active         Boolean  @default(true)
+  last_login        DateTime?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  
+  tasks             Task[]   @relation("AssignedTasks")
+  
+  @@index([email])
+  @@index([role])
+}
+
+// ===== TASKS =====
+model Task {
+  id                String   @id @default(uuid())
+  client_id         String
+  client            Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  
+  assignee_id       String?
+  assignee          Staff?   @relation("AssignedTasks", fields: [assignee_id], references: [id])
+  
+  title             String
+  description       String?
+  task_type         String?  // review_document, file_tax, reconcile, etc.
+  priority          String   @default("medium") // low, medium, high, urgent
+  status            String   @default("pending") // pending, in_progress, completed, cancelled
+  
+  due_date          DateTime?
+  completed_at      DateTime?
+  
+  related_doc_id    String?
+  
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  
+  @@index([client_id, status])
+  @@index([assignee_id, status])
+  @@index([due_date])
+}
+
+// ===== ACTIVITY LOGS =====
+model ActivityLog {
+  id                String   @id @default(uuid())
+  
+  timestamp         DateTime @default(now())
+  action            String   // CREATE, UPDATE, DELETE, LOGIN, etc.
+  entity_type       String   // document, client, gl_entry, etc.
+  entity_id         String?
+  
+  user_id           String?
+  user_email        String?
+  
+  details           Json?
+  ip_address        String?
+  
+  @@index([timestamp])
+  @@index([entity_type, entity_id])
+  @@index([user_id])
+}
