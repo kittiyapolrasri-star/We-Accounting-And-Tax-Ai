@@ -129,9 +129,19 @@ export interface DocumentRecord {
   status: DocumentStatus;
   assigned_to: string | null; // Staff ID
   client_name: string;
-  clientId?: string; // NEW: Proper client ID reference for multi-tenancy
+  clientId?: string; // Client ID reference for multi-tenancy
   amount: number;
   selected?: boolean; // For Batch Operations
+
+  // File Storage References
+  file_url?: string; // Firebase Storage download URL
+  storage_path?: string; // Firebase Storage path for deletion/management
+  mime_type?: string; // File MIME type
+
+  // Period-based Indexing (for efficient queries)
+  year?: number; // 2024
+  month?: string; // "01"-"12"
+  period?: string; // "2024-01" format for filtering
 }
 
 // --- NEW RECONCILIATION TYPES ---
@@ -227,16 +237,22 @@ export interface GLAccount {
 // NEW: Posted GL Entry for History
 export interface PostedGLEntry {
   id: string;
-  clientId: string; // NEW: Multi-tenancy support - Needed for filtering by client
+  clientId: string; // Multi-tenancy support - Needed for filtering by client
   date: string;
   doc_no: string;
   description: string;
   account_code: string;
   account_name: string;
-  department_code?: string; // NEW: Cost Center / Project Support
+  department_code?: string; // Cost Center / Project Support
   debit: number;
   credit: number;
-  system_generated?: boolean; // NEW: To identify auto-closing entries
+  system_generated?: boolean; // To identify auto-closing entries
+
+  // Period-based Indexing (for efficient queries)
+  year?: number; // 2024
+  month?: string; // "01"-"12"
+  period?: string; // "2024-01" format for filtering
+  source_doc_id?: string; // Link to original document
 }
 
 // NEW: Fixed Asset for Register
