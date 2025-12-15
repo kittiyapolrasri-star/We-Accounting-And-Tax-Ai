@@ -15,6 +15,7 @@ import { documentsRouter } from './routes/documents';
 import { glRouter } from './routes/gl';
 import { filesRouter } from './routes/files';
 import { analyzeRouter } from './routes/analyze';
+import { activityLogsRouter } from './routes/activityLogs';
 import { verifyToken } from './middleware/auth';
 
 const app = express();
@@ -90,6 +91,7 @@ app.use('/api/documents', verifyToken, documentsRouter);
 app.use('/api/gl', verifyToken, glRouter);
 app.use('/api/analyze', verifyToken, analyzeRouter);
 app.use('/api/files', verifyToken, filesRouter);
+app.use('/api/activity-logs', verifyToken, activityLogsRouter);
 
 // ======================
 // ERROR HANDLING

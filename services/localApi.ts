@@ -223,12 +223,58 @@ export const getGLEntriesByClient = async (clientId: string) => {
     return getGLEntries({ clientId });
 };
 
-export const addGLEntries = async (entries: any[]) => {
+/**
+ * Add GL entries - matches backend expected format
+ * Backend expects: { client_id, date, entries[], source_doc_id?, journal_ref? }
+ */
+export const addGLEntries = async (postingData: {
+    client_id: string;
+    date: string;
+    entries: Array<{
+        account_code: string;
+        account_name: string;
+        debit?: number;
+        credit?: number;
+        description?: string;
+    }>;
+    source_doc_id?: string;
+    journal_ref?: string;
+}) => {
     const result = await apiRequest<any[]>('/api/gl', {
         method: 'POST',
-        body: JSON.stringify(entries),
+        body: JSON.stringify(postingData),
     });
     return result.data?.map((e: any) => e.id) || [];
+};
+
+/**
+ * Add GL entries from journal lines (simplified interface)
+ * Converts journal_lines format to backend format
+ */
+export const addGLEntriesFromJournalLines = async (
+    clientId: string,
+    date: string,
+    journalLines: Array<{
+        account_code: string;
+        account_name_th?: string;
+        account_side: 'DEBIT' | 'CREDIT';
+        amount: number;
+    }>,
+    sourceDocId?: string
+) => {
+    const entries = journalLines.map(line => ({
+        account_code: line.account_code,
+        account_name: line.account_name_th || line.account_code,
+        debit: line.account_side === 'DEBIT' ? line.amount : 0,
+        credit: line.account_side === 'CREDIT' ? line.amount : 0,
+    }));
+
+    return addGLEntries({
+        client_id: clientId,
+        date,
+        entries,
+        source_doc_id: sourceDocId,
+    });
 };
 
 // =====================================
@@ -344,6 +390,7 @@ export const databaseService = {
     getGLEntries,
     getGLEntriesByClient,
     addGLEntries,
+    addGLEntriesFromJournalLines,
 
     // Files
     uploadDocument,
