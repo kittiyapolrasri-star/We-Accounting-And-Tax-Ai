@@ -369,6 +369,197 @@ export const addLog = async (log: any) => {
 };
 
 // =====================================
+// STAFF FUNCTIONS
+// =====================================
+
+export const getStaff = async (params?: { role?: string; is_active?: boolean }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    const result = await apiRequest<any[]>(`/api/staff${queryString}`);
+    return result.data || [];
+};
+
+export const getStaffById = async (id: string) => {
+    const result = await apiRequest<any>(`/api/staff/${id}`);
+    return result.data || null;
+};
+
+export const addStaff = async (staff: any) => {
+    const result = await apiRequest<any>('/api/staff', {
+        method: 'POST',
+        body: JSON.stringify(staff),
+    });
+    return result.data?.id || '';
+};
+
+export const updateStaff = async (staff: any) => {
+    await apiRequest(`/api/staff/${staff.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(staff),
+    });
+};
+
+// =====================================
+// FIXED ASSETS FUNCTIONS
+// =====================================
+
+export const getAssets = async (params?: { clientId?: string; status?: string }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    const result = await apiRequest<any[]>(`/api/assets${queryString}`);
+    return result.data || [];
+};
+
+export const getAssetsByClient = async (clientId: string) => {
+    return getAssets({ clientId });
+};
+
+export const addAsset = async (asset: any) => {
+    const result = await apiRequest<any>('/api/assets', {
+        method: 'POST',
+        body: JSON.stringify(asset),
+    });
+    return result.data?.id || '';
+};
+
+export const updateAsset = async (asset: any) => {
+    await apiRequest(`/api/assets/${asset.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(asset),
+    });
+};
+
+export const depreciateAsset = async (assetId: string, period: string) => {
+    const result = await apiRequest<any>(`/api/assets/${assetId}/depreciate`, {
+        method: 'POST',
+        body: JSON.stringify({ period }),
+    });
+    return result.data;
+};
+
+// =====================================
+// BANK TRANSACTION FUNCTIONS
+// =====================================
+
+export const getBankTransactions = async (params?: { clientId?: string; status?: string; year?: number; month?: string }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    const result = await apiRequest<any[]>(`/api/bank${queryString}`);
+    return result.data || [];
+};
+
+export const getBankTransactionsByClient = async (clientId: string) => {
+    return getBankTransactions({ clientId });
+};
+
+export const addBankTransactions = async (clientId: string, transactions: any[]) => {
+    const result = await apiRequest<any[]>('/api/bank/import', {
+        method: 'POST',
+        body: JSON.stringify({ client_id: clientId, transactions }),
+    });
+    return result.data || [];
+};
+
+export const matchBankTransaction = async (transactionId: string, documentId: string) => {
+    const result = await apiRequest<any>(`/api/bank/${transactionId}/match`, {
+        method: 'POST',
+        body: JSON.stringify({ documentId }),
+    });
+    return result.data;
+};
+
+export const reconcileBankTransaction = async (transactionId: string) => {
+    const result = await apiRequest<any>(`/api/bank/${transactionId}/reconcile`, {
+        method: 'POST',
+    });
+    return result.data;
+};
+
+export const updateBankTransaction = async (transaction: any) => {
+    await apiRequest(`/api/bank/${transaction.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(transaction),
+    });
+};
+
+// =====================================
+// VENDOR RULES FUNCTIONS
+// =====================================
+
+export const getRules = async (params?: { clientId?: string }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    const result = await apiRequest<any[]>(`/api/rules${queryString}`);
+    return result.data || [];
+};
+
+export const getRulesByClient = async (clientId: string) => {
+    return getRules({ clientId });
+};
+
+export const addRule = async (rule: any) => {
+    const result = await apiRequest<any>('/api/rules', {
+        method: 'POST',
+        body: JSON.stringify(rule),
+    });
+    return result.data?.id || '';
+};
+
+export const deleteRule = async (ruleId: string) => {
+    await apiRequest(`/api/rules/${ruleId}`, {
+        method: 'DELETE',
+    });
+};
+
+export const matchVendorRule = async (vendorName: string, clientId?: string) => {
+    const result = await apiRequest<any>('/api/rules/match', {
+        method: 'POST',
+        body: JSON.stringify({ vendorName, clientId }),
+    });
+    return result.data;
+};
+
+// =====================================
+// TASK FUNCTIONS
+// =====================================
+
+export const getTasks = async (params?: { clientId?: string; status?: string; assigneeId?: string }) => {
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    const result = await apiRequest<any[]>(`/api/tasks${queryString}`);
+    return result.data || [];
+};
+
+export const getMyTasks = async (status?: string) => {
+    const queryString = status ? `?status=${status}` : '';
+    const result = await apiRequest<any[]>(`/api/tasks/my${queryString}`);
+    return result.data || [];
+};
+
+export const addTask = async (task: any) => {
+    const result = await apiRequest<any>('/api/tasks', {
+        method: 'POST',
+        body: JSON.stringify(task),
+    });
+    return result.data?.id || '';
+};
+
+export const updateTask = async (task: any) => {
+    await apiRequest(`/api/tasks/${task.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(task),
+    });
+};
+
+export const completeTask = async (taskId: string) => {
+    const result = await apiRequest<any>(`/api/tasks/${taskId}/complete`, {
+        method: 'POST',
+    });
+    return result.data;
+};
+
+export const deleteTask = async (taskId: string) => {
+    await apiRequest(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+    });
+};
+
+// =====================================
 // EXPORT DATABASE SERVICE OBJECT
 // =====================================
 
@@ -402,8 +593,45 @@ export const databaseService = {
     getLogs,
     addLog,
 
+    // Staff
+    getStaff,
+    getStaffById,
+    addStaff,
+    updateStaff,
+
+    // Fixed Assets
+    getAssets,
+    getAssetsByClient,
+    addAsset,
+    updateAsset,
+    depreciateAsset,
+
+    // Bank Transactions
+    getBankTransactions,
+    getBankTransactionsByClient,
+    addBankTransactions,
+    matchBankTransaction,
+    reconcileBankTransaction,
+    updateBankTransaction,
+
+    // Vendor Rules
+    getRules,
+    getRulesByClient,
+    addRule,
+    deleteRule,
+    matchVendorRule,
+
+    // Tasks
+    getTasks,
+    getMyTasks,
+    addTask,
+    updateTask,
+    completeTask,
+    deleteTask,
+
     // Meta
     isDemoMode: false,
 };
 
 export default databaseService;
+

@@ -16,6 +16,11 @@ import { glRouter } from './routes/gl';
 import { filesRouter } from './routes/files';
 import { analyzeRouter } from './routes/analyze';
 import { activityLogsRouter } from './routes/activityLogs';
+import { staffRouter } from './routes/staff';
+import { assetsRouter } from './routes/assets';
+import { bankRouter } from './routes/bank';
+import { rulesRouter } from './routes/rules';
+import { tasksRouter } from './routes/tasks';
 import { verifyToken } from './middleware/auth';
 
 const app = express();
@@ -92,6 +97,11 @@ app.use('/api/gl', verifyToken, glRouter);
 app.use('/api/analyze', verifyToken, analyzeRouter);
 app.use('/api/files', verifyToken, filesRouter);
 app.use('/api/activity-logs', verifyToken, activityLogsRouter);
+app.use('/api/staff', verifyToken, staffRouter);
+app.use('/api/assets', verifyToken, assetsRouter);
+app.use('/api/bank', verifyToken, bankRouter);
+app.use('/api/rules', verifyToken, rulesRouter);
+app.use('/api/tasks', verifyToken, tasksRouter);
 
 // ======================
 // ERROR HANDLING

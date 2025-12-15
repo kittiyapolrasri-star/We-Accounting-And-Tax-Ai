@@ -27,17 +27,26 @@ cp .env.example .env
 # - JWT_SECRET (change for production!)
 # - GEMINI_API_KEY (from Google AI Studio)
 
-# Generate Prisma client
-npm run prisma:generate
+# Run setup (generate client + migrate + seed)
+npm run setup
 
-# Run database migrations
+# OR run each step manually:
+npm run prisma:generate
 npm run prisma:migrate
+npm run prisma:seed
 
 # Start development server
 npm run dev
 ```
 
 Backend will run on: http://localhost:3001
+
+### Default Login Credentials
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@weaccounting.local | admin123 |
+| Accountant | accountant@weaccounting.local | demo123 |
 
 ---
 
@@ -55,6 +64,7 @@ cp .env.local.example .env.local
 
 # Edit .env.local:
 # VITE_API_URL=http://localhost:3001
+# VITE_DEPLOYMENT_MODE=local
 
 # Start development server
 npm run dev
@@ -104,46 +114,128 @@ npm run prisma:studio
 # Create new migration after schema changes
 npm run prisma:migrate
 
+# Re-run seed data
+npm run prisma:seed
+
 # Reset database (WARNING: deletes all data)
 npx prisma migrate reset
 ```
 
 ---
 
-## 5. Create Admin User
+## 5. API Endpoints
 
-```bash
-# Use the register endpoint
-curl -X POST http://localhost:3001/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "password": "securepassword",
-    "name": "Admin User",
-    "role": "admin"
-  }'
-```
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/login` | Login |
+| POST | `/api/auth/register` | Register |
+| GET | `/api/auth/me` | Current user |
+| POST | `/api/auth/change-password` | Change password |
+
+### Clients
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/clients` | List clients |
+| GET | `/api/clients/:id` | Get client |
+| POST | `/api/clients` | Create client |
+| PUT | `/api/clients/:id` | Update client |
+| DELETE | `/api/clients/:id` | Delete client |
+
+### Documents
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/documents` | List documents |
+| GET | `/api/documents/:id` | Get document |
+| POST | `/api/documents` | Create document |
+| PUT | `/api/documents/:id` | Update document |
+| DELETE | `/api/documents/:id` | Delete document |
+| POST | `/api/documents/:id/approve` | Approve |
+| POST | `/api/documents/:id/reject` | Reject |
+
+### GL Entries
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/gl` | List GL entries |
+| GET | `/api/gl/trial-balance` | Trial balance |
+| POST | `/api/gl` | Create entries |
+| DELETE | `/api/gl/:id` | Delete entry |
+
+### AI OCR
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/analyze/document` | Analyze document |
+| GET | `/api/analyze/health` | Check AI status |
+
+### Files
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/files/upload` | Upload file |
+| POST | `/api/files/upload-base64` | Upload base64 |
+| GET | `/api/files/serve/*` | Serve file |
+| DELETE | `/api/files` | Delete file |
+
+### Staff Management
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/staff` | List staff |
+| GET | `/api/staff/:id` | Get staff |
+| POST | `/api/staff` | Create staff |
+| PUT | `/api/staff/:id` | Update staff |
+| POST | `/api/staff/:id/reset-password` | Reset password |
+| DELETE | `/api/staff/:id` | Deactivate staff |
+
+### Fixed Assets
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/assets` | List assets |
+| GET | `/api/assets/:id` | Get asset |
+| POST | `/api/assets` | Create asset |
+| PUT | `/api/assets/:id` | Update asset |
+| POST | `/api/assets/:id/depreciate` | Depreciate |
+| DELETE | `/api/assets/:id` | Delete asset |
+
+### Bank Transactions
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/bank` | List transactions |
+| POST | `/api/bank` | Create transaction |
+| POST | `/api/bank/import` | Import batch |
+| POST | `/api/bank/:id/match` | Match to document |
+| POST | `/api/bank/:id/reconcile` | Mark reconciled |
+| GET | `/api/bank/summary` | Reconciliation summary |
+| DELETE | `/api/bank/:id` | Delete transaction |
+
+### Vendor Rules
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/rules` | List rules |
+| POST | `/api/rules` | Create rule |
+| PUT | `/api/rules/:id` | Update rule |
+| POST | `/api/rules/match` | Match vendor name |
+| DELETE | `/api/rules/:id` | Delete rule |
+
+### Tasks
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/tasks` | List tasks |
+| GET | `/api/tasks/my` | My tasks |
+| POST | `/api/tasks` | Create task |
+| PUT | `/api/tasks/:id` | Update task |
+| POST | `/api/tasks/:id/complete` | Complete task |
+| DELETE | `/api/tasks/:id` | Delete task |
+
+### Activity Logs
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/activity-logs` | List logs |
+| POST | `/api/activity-logs` | Create log |
+| GET | `/api/activity-logs/entity/:type/:id` | Entity logs |
+| GET | `/api/activity-logs/user/:id` | User logs |
 
 ---
 
-## 6. API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/api/auth/login` | POST | Login |
-| `/api/auth/register` | POST | Register |
-| `/api/auth/me` | GET | Current user |
-| `/api/clients` | GET/POST | Clients CRUD |
-| `/api/clients/:id` | GET/PUT/DELETE | Single client |
-| `/api/documents` | GET/POST | Documents |
-| `/api/gl` | GET/POST | GL entries |
-| `/api/analyze/document` | POST | AI OCR |
-| `/api/files/upload` | POST | File upload |
-
----
-
-## 7. Troubleshooting
+## 6. Troubleshooting
 
 ### Database connection error
 ```bash
@@ -166,9 +258,16 @@ grep GEMINI_API_KEY backend/.env
 # Must match your frontend URL
 ```
 
+### TypeScript errors after checkout
+```bash
+cd backend
+npm install
+npm run prisma:generate
+```
+
 ---
 
-## 8. Backup & Restore
+## 7. Backup & Restore
 
 ### Backup PostgreSQL
 ```bash
@@ -187,7 +286,7 @@ tar -czf documents-backup.tar.gz backend/storage/
 
 ---
 
-## Architecture
+## 8. Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -215,4 +314,24 @@ tar -czf documents-backup.tar.gz backend/storage/
 
 ---
 
-*Local VM Deployment Guide - WE Accounting & Tax AI*
+## 9. Feature Comparison
+
+| Feature | Cloud | Local |
+|---------|-------|-------|
+| Authentication | ✅ | ✅ |
+| Client CRUD | ✅ | ✅ |
+| Document CRUD | ✅ | ✅ |
+| GL Entries | ✅ | ✅ |
+| AI OCR (Gemini) | ✅ | ✅ |
+| Staff Management | ✅ | ✅ |
+| Asset Management | ✅ | ✅ |
+| Bank Reconciliation | ✅ | ✅ |
+| Vendor Rules | ✅ | ✅ |
+| Task Management | ✅ | ✅ |
+| Activity Logs | ✅ | ✅ |
+| Trial Balance | ❌ | ✅ |
+
+---
+
+*Local VM Deployment Guide - WE Accounting & Tax AI v1.0*
+
