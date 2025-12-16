@@ -5,9 +5,10 @@ import { Building2, MapPin, Activity, FileText, MoreHorizontal, Plus } from 'luc
 interface Props {
   clients: Client[];
   onSelectClient?: (client: Client) => void;
+  onAddClient?: () => void;
 }
 
-const ClientDirectory: React.FC<Props> = ({ clients, onSelectClient }) => {
+const ClientDirectory: React.FC<Props> = ({ clients, onSelectClient, onAddClient }) => {
   return (
     <div className="h-full flex flex-col bg-slate-50">
       {/* Clean Minimal Header */}
@@ -22,7 +23,10 @@ const ClientDirectory: React.FC<Props> = ({ clients, onSelectClient }) => {
               <p className="text-sm text-slate-500">จัดการข้อมูลบริษัทและรอบระยะเวลาบัญชี</p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+          <button
+            onClick={onAddClient}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
             <Plus size={18} />
             เพิ่มลูกค้าใหม่
           </button>

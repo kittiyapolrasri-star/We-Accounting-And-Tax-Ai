@@ -48,6 +48,7 @@ import NotificationCenter, { NotificationBell } from './components/NotificationC
 import ECommerceSyncDashboard from './components/ECommerceSyncDashboard';
 import RecurringTasksManager from './components/RecurringTasksManager';
 import SalesDataImport from './components/SalesDataImport';
+import SimpleAddClientModal from './components/SimpleAddClientModal';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
@@ -90,6 +91,7 @@ const AppContent: React.FC = () => {
 
     // Specific View States
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [showAddClientModal, setShowAddClientModal] = useState(false);
     const [reviewDocId, setReviewDocId] = useState<string | null>(null);
 
     // Upload Queue State
@@ -865,6 +867,27 @@ const AppContent: React.FC = () => {
         setVendorRules(newRules);
     };
 
+    const handleCreateClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
+        try {
+            const newClient = {
+                ...clientData,
+                status: 'Active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            } as any;
+
+            const newId = await databaseService.addClient(newClient);
+            const createdClient = { ...newClient, id: newId };
+
+            setClients(prev => [...prev, createdClient as Client]);
+            setShowAddClientModal(false);
+            showNotification(`เพิ่มลูกค้า ${clientData.name} สำเร็จ`, 'success');
+        } catch (error) {
+            console.error('Error creating client:', error);
+            showNotification('ไม่สามารถเพิ่มลูกค้าได้', 'error');
+        }
+    };
+
     // --- TASK MANAGEMENT HANDLERS ---
     const handleCreateTask = async (data: Partial<Task>) => {
         const now = new Date().toISOString();
@@ -1112,7 +1135,7 @@ const AppContent: React.FC = () => {
                 // Pass clientId if we want specific, but global recon view might be needed for staff
                 return <BankReconciliation documents={documents} clients={clients} onPostAdjustment={handlePostJournalEntry} />;
             case 'clients':
-                return <ClientDirectory clients={clients} onSelectClient={handleSelectClient} />;
+                return <ClientDirectory clients={clients} onSelectClient={handleSelectClient} onAddClient={() => setShowAddClientModal(true)} />;
             case 'master-data':
                 return <MasterData clients={clients} />;
             case 'payroll':
@@ -1312,6 +1335,14 @@ const AppContent: React.FC = () => {
                         id: CURRENT_USER_ID,
                         name: CURRENT_USER_NAME
                     }}
+                />
+            )}
+
+            {/* Add Client Modal */}
+            {showAddClientModal && (
+                <SimpleAddClientModal
+                    onClose={() => setShowAddClientModal(false)}
+                    onSubmit={handleCreateClient}
                 />
             )}
 
