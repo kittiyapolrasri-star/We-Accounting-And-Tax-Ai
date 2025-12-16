@@ -12,14 +12,16 @@ import { Loader2 } from 'lucide-react';
 
 interface SkeletonProps {
     className?: string;
+    style?: React.CSSProperties;
 }
 
 /**
  * Skeleton base component
  */
-export const Skeleton: React.FC<SkeletonProps> = ({ className = '' }) => (
+export const Skeleton: React.FC<SkeletonProps> = ({ className = '', style }) => (
     <div
         className={`animate-pulse bg-slate-200 rounded ${className}`}
+        style={style}
     />
 );
 

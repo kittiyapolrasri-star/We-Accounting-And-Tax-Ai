@@ -6,13 +6,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Extend jsPDF type for autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: typeof autoTable;
-    lastAutoTable: { finalY: number };
-  }
-}
+// jspdf-autotable extends jsPDF automatically via its import
 
 export interface ReportData {
   title: string;
@@ -138,7 +132,7 @@ export const generateVATReportPDF = (
   });
 
   // Footer
-  const finalY = doc.lastAutoTable.finalY + 20;
+  const finalY = (doc as any).lastAutoTable.finalY + 20;
   doc.setFontSize(8);
   doc.text(`พิมพ์จาก WE Accounting & Tax AI - ${formatThaiDate(new Date())}`, 105, finalY, { align: 'center' });
 
@@ -210,7 +204,7 @@ export const generateWHTCertificatePDF = (
     }
   });
 
-  const finalY = doc.lastAutoTable.finalY + 10;
+  const finalY = (doc as any).lastAutoTable.finalY + 10;
 
   // Section 4: Payment date
   doc.text(`4. วันเดือนปีที่จ่ายเงิน: ${item.date}`, 14, finalY + 5);
@@ -308,7 +302,7 @@ export const generateWHTSummaryPDF = (
   });
 
   // Summary section
-  const finalY = doc.lastAutoTable.finalY + 15;
+  const finalY = (doc as any).lastAutoTable.finalY + 15;
   doc.setFontSize(10);
   doc.setDrawColor(150);
   doc.rect(14, finalY, 90, 30);
@@ -574,12 +568,12 @@ const generatePrintableHTML = (data: ReportData): string => {
       <div class="footer">
         พิมพ์จาก WE Accounting & Tax AI<br>
         วันที่พิมพ์: ${new Date().toLocaleDateString('th-TH', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        })}
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })}
       </div>
     </body>
     </html>
