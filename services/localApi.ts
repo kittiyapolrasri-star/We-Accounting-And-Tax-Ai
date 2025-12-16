@@ -671,8 +671,70 @@ export const getPeriodHistory = async (clientId: string, limit?: number) => {
 };
 
 // =====================================
+// COMPARATIVE FINANCIAL REPORTS (FOR CPA)
+// =====================================
+
+/**
+ * Get Comparative Income Statement - Year-over-Year
+ */
+export const getComparativeIncomeStatement = async (
+    clientId: string,
+    currentYear: number,
+    previousYear?: number
+) => {
+    const params = new URLSearchParams({
+        clientId,
+        currentYear: currentYear.toString()
+    });
+    if (previousYear) params.append('previousYear', previousYear.toString());
+
+    const result = await apiRequest<any>(`/api/reports/income-statement/comparative?${params}`);
+    return result.data;
+};
+
+/**
+ * Get Comparative Balance Sheet - Year-over-Year
+ */
+export const getComparativeBalanceSheet = async (
+    clientId: string,
+    currentYear: number,
+    previousYear?: number
+) => {
+    const params = new URLSearchParams({
+        clientId,
+        currentYear: currentYear.toString()
+    });
+    if (previousYear) params.append('previousYear', previousYear.toString());
+
+    const result = await apiRequest<any>(`/api/reports/balance-sheet/comparative?${params}`);
+    return result.data;
+};
+
+/**
+ * Get Multi-Year Financial Analysis (3-10 years trend)
+ */
+export const getMultiYearAnalysis = async (clientId: string, years: number = 5) => {
+    const params = new URLSearchParams({
+        clientId,
+        years: years.toString()
+    });
+
+    const result = await apiRequest<any>(`/api/reports/multi-year-analysis?${params}`);
+    return result.data;
+};
+
+/**
+ * Get Available Years with Data
+ */
+export const getAvailableYears = async (clientId: string) => {
+    const result = await apiRequest<any>(`/api/reports/available-years?clientId=${clientId}`);
+    return result.data;
+};
+
+// =====================================
 // EXPORT DATABASE SERVICE OBJECT
 // =====================================
+
 
 export const databaseService = {
     // Clients
@@ -754,11 +816,18 @@ export const databaseService = {
     checkPeriodBalance,
     getPeriodHistory,
 
+    // Comparative Reports (for CPA)
+    getComparativeIncomeStatement,
+    getComparativeBalanceSheet,
+    getMultiYearAnalysis,
+    getAvailableYears,
+
     // Meta
     isDemoMode: false,
 };
 
 export default databaseService;
+
 
 
 

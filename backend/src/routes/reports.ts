@@ -631,4 +631,496 @@ router.get('/summary', async (req: AuthRequest, res: Response) => {
     }
 });
 
+// ============================================================================
+// COMPARATIVE FINANCIAL STATEMENTS (FOR CPA AUDIT)
+// ============================================================================
+
+/**
+ * GET /api/reports/income-statement/comparative
+ * Generate Comparative Income Statement (Year-over-Year)
+ * For CPA Audit Requirements
+ */
+router.get('/income-statement/comparative', async (req: AuthRequest, res: Response) => {
+    try {
+        const { clientId, currentYear, previousYear } = req.query;
+
+        if (!clientId || !currentYear) {
+            return res.status(400).json({
+                success: false,
+                error: 'กรุณาระบุ clientId และ currentYear',
+            });
+        }
+
+        const client = await prisma.client.findUnique({
+            where: { id: clientId as string },
+        });
+
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                error: 'ไม่พบลูกค้า',
+            });
+        }
+
+        const currYear = parseInt(currentYear as string);
+        const prevYear = previousYear ? parseInt(previousYear as string) : currYear - 1;
+
+        // Helper function to get income statement data for a year
+        const getYearData = async (year: number) => {
+            const yearStart = `${year}-01-01`;
+            const yearEnd = `${year}-12-31`;
+
+            const entries = await prisma.gLEntry.groupBy({
+                by: ['account_code', 'account_name'],
+                where: {
+                    client_id: clientId as string,
+                    date: {
+                        gte: new Date(yearStart),
+                        lte: new Date(yearEnd),
+                    },
+                },
+                _sum: {
+                    debit: true,
+                    credit: true,
+                },
+            });
+
+            let totalRevenue = 0;
+            let totalCostOfSales = 0;
+            let totalOperatingExpenses = 0;
+            let otherIncome = 0;
+            let otherExpenses = 0;
+
+            const revenueItems: { code: string; name: string; amount: number }[] = [];
+            const costItems: { code: string; name: string; amount: number }[] = [];
+            const expenseItems: { code: string; name: string; amount: number }[] = [];
+
+            entries.forEach(entry => {
+                const accountType = getAccountType(entry.account_code);
+                const debit = entry._sum.debit || 0;
+                const credit = entry._sum.credit || 0;
+                const balance = accountType === 'expense' ? debit - credit : credit - debit;
+                const amount = Math.abs(balance);
+                if (amount < 0.01) return;
+
+                if (accountType === 'revenue') {
+                    if (entry.account_code.startsWith('49')) {
+                        otherIncome += amount;
+                    } else {
+                        revenueItems.push({ code: entry.account_code, name: entry.account_name, amount });
+                        totalRevenue += amount;
+                    }
+                } else if (accountType === 'expense') {
+                    if (entry.account_code.startsWith('51')) {
+                        costItems.push({ code: entry.account_code, name: entry.account_name, amount });
+                        totalCostOfSales += amount;
+                    } else if (entry.account_code.startsWith('59')) {
+                        otherExpenses += amount;
+                    } else {
+                        expenseItems.push({ code: entry.account_code, name: entry.account_name, amount });
+                        totalOperatingExpenses += amount;
+                    }
+                }
+            });
+
+            const grossProfit = totalRevenue - totalCostOfSales;
+            const operatingProfit = grossProfit - totalOperatingExpenses;
+            const profitBeforeTax = operatingProfit + otherIncome - otherExpenses;
+            const incomeTaxExpense = profitBeforeTax > 0 ? profitBeforeTax * 0.20 : 0;
+            const netProfit = profitBeforeTax - incomeTaxExpense;
+
+            return {
+                year,
+                revenueItems,
+                totalRevenue,
+                costItems,
+                totalCostOfSales,
+                grossProfit,
+                expenseItems,
+                totalOperatingExpenses,
+                operatingProfit,
+                otherIncome,
+                otherExpenses,
+                profitBeforeTax,
+                incomeTaxExpense,
+                netProfit,
+            };
+        };
+
+        const currentYearData = await getYearData(currYear);
+        const previousYearData = await getYearData(prevYear);
+
+        // Calculate variances
+        const variance = {
+            totalRevenue: currentYearData.totalRevenue - previousYearData.totalRevenue,
+            totalRevenuePercent: previousYearData.totalRevenue > 0
+                ? ((currentYearData.totalRevenue - previousYearData.totalRevenue) / previousYearData.totalRevenue * 100)
+                : 0,
+            grossProfit: currentYearData.grossProfit - previousYearData.grossProfit,
+            grossProfitPercent: previousYearData.grossProfit > 0
+                ? ((currentYearData.grossProfit - previousYearData.grossProfit) / previousYearData.grossProfit * 100)
+                : 0,
+            netProfit: currentYearData.netProfit - previousYearData.netProfit,
+            netProfitPercent: previousYearData.netProfit > 0
+                ? ((currentYearData.netProfit - previousYearData.netProfit) / previousYearData.netProfit * 100)
+                : 0,
+            operatingProfit: currentYearData.operatingProfit - previousYearData.operatingProfit,
+        };
+
+        res.json({
+            success: true,
+            data: {
+                clientId: client.id,
+                clientName: client.name,
+                reportTitle: 'งบกำไรขาดทุนเปรียบเทียบ (Comparative Income Statement)',
+                currentYear: currentYearData,
+                previousYear: previousYearData,
+                variance,
+                generatedAt: new Date().toISOString(),
+            },
+        });
+    } catch (error: any) {
+        console.error('Generate comparative income statement error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'ไม่สามารถสร้างงบกำไรขาดทุนเปรียบเทียบได้',
+        });
+    }
+});
+
+/**
+ * GET /api/reports/balance-sheet/comparative
+ * Generate Comparative Balance Sheet (Year-over-Year)
+ */
+router.get('/balance-sheet/comparative', async (req: AuthRequest, res: Response) => {
+    try {
+        const { clientId, currentYear, previousYear } = req.query;
+
+        if (!clientId || !currentYear) {
+            return res.status(400).json({
+                success: false,
+                error: 'กรุณาระบุ clientId และ currentYear',
+            });
+        }
+
+        const client = await prisma.client.findUnique({
+            where: { id: clientId as string },
+        });
+
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                error: 'ไม่พบลูกค้า',
+            });
+        }
+
+        const currYear = parseInt(currentYear as string);
+        const prevYear = previousYear ? parseInt(previousYear as string) : currYear - 1;
+
+        // Helper to get balance sheet data as of year-end
+        const getYearEndData = async (year: number) => {
+            const yearEnd = `${year}-12-31`;
+
+            const entries = await prisma.gLEntry.groupBy({
+                by: ['account_code', 'account_name'],
+                where: {
+                    client_id: clientId as string,
+                    date: { lte: new Date(yearEnd) },
+                },
+                _sum: {
+                    debit: true,
+                    credit: true,
+                },
+            });
+
+            let totalCurrentAssets = 0;
+            let totalNonCurrentAssets = 0;
+            let totalCurrentLiabilities = 0;
+            let totalNonCurrentLiabilities = 0;
+            let totalEquity = 0;
+            let retainedEarnings = 0;
+
+            const currentAssetItems: { code: string; name: string; amount: number }[] = [];
+            const nonCurrentAssetItems: { code: string; name: string; amount: number }[] = [];
+            const currentLiabilityItems: { code: string; name: string; amount: number }[] = [];
+            const nonCurrentLiabilityItems: { code: string; name: string; amount: number }[] = [];
+            const equityItems: { code: string; name: string; amount: number }[] = [];
+
+            entries.forEach(entry => {
+                const accountType = getAccountType(entry.account_code);
+                const debit = entry._sum.debit || 0;
+                const credit = entry._sum.credit || 0;
+                let balance = accountType === 'asset' || accountType === 'expense' ? debit - credit : credit - debit;
+                if (Math.abs(balance) < 0.01) return;
+
+                const item = { code: entry.account_code, name: entry.account_name, amount: Math.abs(balance) };
+
+                switch (accountType) {
+                    case 'asset':
+                        if (isCurrentAccount(entry.account_code)) {
+                            currentAssetItems.push(item);
+                            totalCurrentAssets += balance;
+                        } else {
+                            nonCurrentAssetItems.push(item);
+                            totalNonCurrentAssets += balance;
+                        }
+                        break;
+                    case 'liability':
+                        if (isCurrentAccount(entry.account_code)) {
+                            currentLiabilityItems.push(item);
+                            totalCurrentLiabilities += balance;
+                        } else {
+                            nonCurrentLiabilityItems.push(item);
+                            totalNonCurrentLiabilities += balance;
+                        }
+                        break;
+                    case 'equity':
+                        equityItems.push(item);
+                        totalEquity += balance;
+                        break;
+                    case 'revenue':
+                        retainedEarnings += balance;
+                        break;
+                    case 'expense':
+                        retainedEarnings -= balance;
+                        break;
+                }
+            });
+
+            totalEquity += retainedEarnings;
+            const totalAssets = totalCurrentAssets + totalNonCurrentAssets;
+            const totalLiabilities = totalCurrentLiabilities + totalNonCurrentLiabilities;
+
+            return {
+                year,
+                asOfDate: `${year}-12-31`,
+                totalCurrentAssets,
+                totalNonCurrentAssets,
+                totalAssets,
+                totalCurrentLiabilities,
+                totalNonCurrentLiabilities,
+                totalLiabilities,
+                totalEquity,
+                retainedEarnings,
+                totalLiabilitiesAndEquity: totalLiabilities + totalEquity,
+                currentAssetItems,
+                nonCurrentAssetItems,
+                currentLiabilityItems,
+                nonCurrentLiabilityItems,
+                equityItems,
+            };
+        };
+
+        const currentYearData = await getYearEndData(currYear);
+        const previousYearData = await getYearEndData(prevYear);
+
+        // Calculate key ratios and variances
+        const analysis = {
+            currentRatio: {
+                current: currentYearData.totalCurrentLiabilities > 0
+                    ? currentYearData.totalCurrentAssets / currentYearData.totalCurrentLiabilities : 0,
+                previous: previousYearData.totalCurrentLiabilities > 0
+                    ? previousYearData.totalCurrentAssets / previousYearData.totalCurrentLiabilities : 0,
+            },
+            debtToEquity: {
+                current: currentYearData.totalEquity > 0
+                    ? currentYearData.totalLiabilities / currentYearData.totalEquity : 0,
+                previous: previousYearData.totalEquity > 0
+                    ? previousYearData.totalLiabilities / previousYearData.totalEquity : 0,
+            },
+            assetGrowth: previousYearData.totalAssets > 0
+                ? ((currentYearData.totalAssets - previousYearData.totalAssets) / previousYearData.totalAssets * 100) : 0,
+            equityGrowth: previousYearData.totalEquity > 0
+                ? ((currentYearData.totalEquity - previousYearData.totalEquity) / previousYearData.totalEquity * 100) : 0,
+        };
+
+        res.json({
+            success: true,
+            data: {
+                clientId: client.id,
+                clientName: client.name,
+                reportTitle: 'งบแสดงฐานะการเงินเปรียบเทียบ (Comparative Balance Sheet)',
+                currentYear: currentYearData,
+                previousYear: previousYearData,
+                analysis,
+                generatedAt: new Date().toISOString(),
+            },
+        });
+    } catch (error: any) {
+        console.error('Generate comparative balance sheet error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'ไม่สามารถสร้างงบแสดงฐานะการเงินเปรียบเทียบได้',
+        });
+    }
+});
+
+/**
+ * GET /api/reports/multi-year-analysis
+ * Get multi-year financial trends (3-5 years)
+ */
+router.get('/multi-year-analysis', async (req: AuthRequest, res: Response) => {
+    try {
+        const { clientId, years = '5' } = req.query;
+
+        if (!clientId) {
+            return res.status(400).json({
+                success: false,
+                error: 'กรุณาระบุ clientId',
+            });
+        }
+
+        const client = await prisma.client.findUnique({
+            where: { id: clientId as string },
+        });
+
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                error: 'ไม่พบลูกค้า',
+            });
+        }
+
+        const currentYear = new Date().getFullYear();
+        const numYears = Math.min(parseInt(years as string), 10);
+        const yearList = Array.from({ length: numYears }, (_, i) => currentYear - i).reverse();
+
+        // Get yearly summaries
+        const yearlyData = await Promise.all(
+            yearList.map(async (year) => {
+                const yearStart = `${year}-01-01`;
+                const yearEnd = `${year}-12-31`;
+
+                const entries = await prisma.gLEntry.groupBy({
+                    by: ['account_code'],
+                    where: {
+                        client_id: clientId as string,
+                        date: {
+                            gte: new Date(yearStart),
+                            lte: new Date(yearEnd),
+                        },
+                    },
+                    _sum: {
+                        debit: true,
+                        credit: true,
+                    },
+                });
+
+                let totalRevenue = 0;
+                let totalExpenses = 0;
+                let totalAssets = 0;
+                let totalLiabilities = 0;
+
+                entries.forEach(e => {
+                    const type = getAccountType(e.account_code);
+                    const debit = e._sum.debit || 0;
+                    const credit = e._sum.credit || 0;
+
+                    switch (type) {
+                        case 'revenue': totalRevenue += credit - debit; break;
+                        case 'expense': totalExpenses += debit - credit; break;
+                        case 'asset': totalAssets += debit - credit; break;
+                        case 'liability': totalLiabilities += credit - debit; break;
+                    }
+                });
+
+                const netProfit = totalRevenue - totalExpenses;
+                const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue * 100) : 0;
+
+                return {
+                    year,
+                    totalRevenue,
+                    totalExpenses,
+                    netProfit,
+                    profitMargin: Math.round(profitMargin * 100) / 100,
+                    totalAssets,
+                    totalLiabilities,
+                    equity: totalAssets - totalLiabilities,
+                };
+            })
+        );
+
+        // Calculate trends (CAGR, averages)
+        const firstYear = yearlyData[0];
+        const lastYear = yearlyData[yearlyData.length - 1];
+        const yearsSpan = numYears - 1;
+
+        const trends = {
+            revenueCAGR: firstYear.totalRevenue > 0 && yearsSpan > 0
+                ? (Math.pow(lastYear.totalRevenue / firstYear.totalRevenue, 1 / yearsSpan) - 1) * 100
+                : 0,
+            profitCAGR: firstYear.netProfit > 0 && yearsSpan > 0
+                ? (Math.pow(Math.max(lastYear.netProfit, 1) / Math.max(firstYear.netProfit, 1), 1 / yearsSpan) - 1) * 100
+                : 0,
+            avgProfitMargin: yearlyData.reduce((sum, y) => sum + y.profitMargin, 0) / numYears,
+            avgRevenue: yearlyData.reduce((sum, y) => sum + y.totalRevenue, 0) / numYears,
+        };
+
+        res.json({
+            success: true,
+            data: {
+                clientId: client.id,
+                clientName: client.name,
+                reportTitle: 'การวิเคราะห์แนวโน้มหลายปี (Multi-Year Trend Analysis)',
+                yearlyData,
+                trends: {
+                    revenueCAGR: Math.round(trends.revenueCAGR * 100) / 100,
+                    profitCAGR: Math.round(trends.profitCAGR * 100) / 100,
+                    avgProfitMargin: Math.round(trends.avgProfitMargin * 100) / 100,
+                    avgRevenue: Math.round(trends.avgRevenue * 100) / 100,
+                },
+                generatedAt: new Date().toISOString(),
+            },
+        });
+    } catch (error: any) {
+        console.error('Get multi-year analysis error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'ไม่สามารถสร้างการวิเคราะห์หลายปีได้',
+        });
+    }
+});
+
+/**
+ * GET /api/reports/available-years
+ * Get list of years with data for a client
+ */
+router.get('/available-years', async (req: AuthRequest, res: Response) => {
+    try {
+        const { clientId } = req.query;
+
+        if (!clientId) {
+            return res.status(400).json({
+                success: false,
+                error: 'กรุณาระบุ clientId',
+            });
+        }
+
+        const entries = await prisma.gLEntry.findMany({
+            where: { client_id: clientId as string },
+            select: { year: true },
+            distinct: ['year'],
+            orderBy: { year: 'desc' },
+        });
+
+        const years = entries.map(e => e.year);
+
+        res.json({
+            success: true,
+            data: {
+                clientId,
+                years,
+                currentYear: new Date().getFullYear(),
+            },
+        });
+    } catch (error: any) {
+        console.error('Get available years error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'ไม่สามารถดึงรายการปีได้',
+        });
+    }
+});
+
 export { router as reportsRouter };
+
