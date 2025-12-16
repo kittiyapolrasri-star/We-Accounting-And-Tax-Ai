@@ -22,6 +22,7 @@ import { bankRouter } from './routes/bank';
 import { rulesRouter } from './routes/rules';
 import { tasksRouter } from './routes/tasks';
 import { reportsRouter } from './routes/reports';
+import { periodRouter } from './routes/period';
 import { verifyToken } from './middleware/auth';
 
 const app = express();
@@ -104,6 +105,7 @@ app.use('/api/bank', verifyToken, bankRouter);
 app.use('/api/rules', verifyToken, rulesRouter);
 app.use('/api/tasks', verifyToken, tasksRouter);
 app.use('/api/reports', verifyToken, reportsRouter);
+app.use('/api/period', verifyToken, periodRouter);
 
 // ======================
 // ERROR HANDLING

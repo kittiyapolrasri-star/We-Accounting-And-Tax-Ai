@@ -615,10 +615,59 @@ export const getIncomeStatementHTML = async (
     if (periodStart) params.append('periodStart', periodStart);
     if (periodEnd) params.append('periodEnd', periodEnd);
 
+    const token = getAuthToken();
+    const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+    };
+    if (token) {
+        (headers as any)['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/reports/income-statement/html?${params}`, {
-        headers: getAuthHeaders(),
+        headers,
     });
     return response.text();
+};
+
+// =====================================
+// PERIOD CLOSING FUNCTIONS
+// =====================================
+
+export const getPeriodStatus = async (clientId: string, period?: string) => {
+    const params = new URLSearchParams({ clientId });
+    if (period) params.append('period', period);
+
+    const result = await apiRequest<any>(`/api/period/status?${params}`);
+    return result.data;
+};
+
+export const closePeriod = async (clientId: string, period: string) => {
+    const result = await apiRequest<any>('/api/period/close', {
+        method: 'POST',
+        body: JSON.stringify({ clientId, period }),
+    });
+    return result.data;
+};
+
+export const reopenPeriod = async (clientId: string, period: string, reason: string) => {
+    const result = await apiRequest<any>('/api/period/reopen', {
+        method: 'POST',
+        body: JSON.stringify({ clientId, period, reason }),
+    });
+    return result.data;
+};
+
+export const checkPeriodBalance = async (clientId: string, period: string) => {
+    const result = await apiRequest<any>(`/api/period/balance-check?clientId=${clientId}&period=${period}`);
+    return result.data;
+};
+
+export const getPeriodHistory = async (clientId: string, limit?: number) => {
+    const params = new URLSearchParams({ clientId });
+    if (limit) params.append('limit', limit.toString());
+
+    const result = await apiRequest<any>(`/api/period/history?${params}`);
+    return result.data;
 };
 
 // =====================================
@@ -698,10 +747,19 @@ export const databaseService = {
     getFinancialSummary,
     getIncomeStatementHTML,
 
+    // Period Closing
+    getPeriodStatus,
+    closePeriod,
+    reopenPeriod,
+    checkPeriodBalance,
+    getPeriodHistory,
+
     // Meta
     isDemoMode: false,
 };
 
 export default databaseService;
+
+
 
 
