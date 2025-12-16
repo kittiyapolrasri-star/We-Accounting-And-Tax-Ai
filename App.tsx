@@ -473,6 +473,25 @@ const AppContent: React.FC = () => {
         }
     };
 
+    // --- BATCH DELETE ---
+    const handleBatchDelete = async (docIds: string[]) => {
+        try {
+            // Delete from database
+            for (const docId of docIds) {
+                await databaseService.deleteDocument(docId);
+            }
+
+            // Update local state
+            setDocuments(prev => prev.filter(d => !docIds.includes(d.id)));
+
+            showNotification(`ลบเอกสาร ${docIds.length} รายการสำเร็จ`, 'success');
+            await logAction('UPLOAD', `Deleted ${docIds.length} documents: ${docIds.join(', ')}`);
+        } catch (error) {
+            console.error('Error deleting documents:', error);
+            showNotification('เกิดข้อผิดพลาดในการลบเอกสาร', 'error');
+        }
+    };
+
     const handleSaveEntry = async (data: AccountingResponse, assignedStaffId: string | null) => {
         if (!reviewDocId) return;
 
@@ -1127,7 +1146,8 @@ const AppContent: React.FC = () => {
                             staff={staff}
                             clients={clients}
                             onReview={handleOpenReview}
-                            onBatchApprove={handleBatchApprove} // Added
+                            onBatchApprove={handleBatchApprove}
+                            onBatchDelete={handleBatchDelete}
                         />
                     </div>
                 );
