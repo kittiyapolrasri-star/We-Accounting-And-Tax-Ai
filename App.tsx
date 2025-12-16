@@ -186,14 +186,14 @@ const AppContent: React.FC = () => {
     const resolveRelatedIssues = async (docId: string) => {
         let issuesResolvedCount = 0;
         const updatedClients = clients.map(client => {
-            const relatedIssues = client.current_workflow.issues.filter(i => i.related_doc_id === docId);
+            const relatedIssues = client.current_workflow?.issues?.filter(i => i.related_doc_id === docId) || [];
             if (relatedIssues.length > 0) {
                 issuesResolvedCount += relatedIssues.length;
                 const newClient = {
                     ...client,
                     current_workflow: {
                         ...client.current_workflow,
-                        issues: client.current_workflow.issues.filter(i => i.related_doc_id !== docId)
+                        issues: client.current_workflow?.issues?.filter(i => i.related_doc_id !== docId) || []
                     }
                 };
                 // Async update in background
@@ -295,10 +295,19 @@ const AppContent: React.FC = () => {
         if (!selectedClientId) return;
 
         const updatedClients = clients.map(c => {
-            if (c.id === selectedClientId) {
-                const updatedClient = {
+            if (c.id === selectedClientId && c.current_workflow) {
+                const updatedClient: Client = {
                     ...c,
-                    current_workflow: { ...c.current_workflow, ...status }
+                    current_workflow: {
+                        month: c.current_workflow.month || new Date().toISOString().slice(0, 7),
+                        vat_status: status.vat_status ?? c.current_workflow.vat_status ?? 'Not Started',
+                        wht_status: status.wht_status ?? c.current_workflow.wht_status ?? 'Not Started',
+                        closing_status: status.closing_status ?? c.current_workflow.closing_status ?? 'Not Started',
+                        is_locked: status.is_locked ?? c.current_workflow.is_locked ?? false,
+                        doc_count: status.doc_count ?? c.current_workflow.doc_count ?? 0,
+                        pending_count: status.pending_count ?? c.current_workflow.pending_count ?? 0,
+                        issues: status.issues ?? c.current_workflow.issues ?? []
+                    }
                 };
                 databaseService.updateClient(updatedClient);
                 return updatedClient;
@@ -464,7 +473,7 @@ const AppContent: React.FC = () => {
 
         // Check if client Period is Locked
         const client = clients.find(c => c.name === doc.client_name);
-        if (client && client.current_workflow.is_locked) {
+        if (client && client.current_workflow?.is_locked) {
             showNotification("ไม่สามารถบันทึกได้เนื่องจากงวดบัญชีถูกปิดแล้ว (Period Locked)", 'error');
             return;
         }

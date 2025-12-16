@@ -79,7 +79,7 @@ const CEODashboard: React.FC<Props> = ({
             totalStaff: staff.length,
             activeStaff: staff.filter(s => s.status === 'active').length,
             totalClients: clients.length,
-            activeClients: clients.filter(c => c.status === 'active').length,
+            activeClients: clients.filter(c => c.status === 'Active').length,
             totalTasks: tasks.length,
             activeTasks: activeTasks.length,
             overdueTasks: overdueTasks.length,
@@ -94,7 +94,7 @@ const CEODashboard: React.FC<Props> = ({
     const clientAssignments: ClientAssignment[] = useMemo(() => {
         return clients.map(client => {
             const clientTasks = tasks.filter(t => t.clientId === client.id);
-            const assignedStaff = staff.find(s => client.assigned_staff?.includes(s.id));
+            const assignedStaff = staff.find(s => s.id === client.assigned_staff_id);
             const pendingTasks = clientTasks.filter(t => !['completed', 'cancelled'].includes(t.status));
             const overdueTasks = clientTasks.filter(t =>
                 t.dueDate && new Date(t.dueDate) < new Date() && !['completed', 'cancelled'].includes(t.status)
@@ -128,7 +128,7 @@ const CEODashboard: React.FC<Props> = ({
             const overdue = staffTasks.filter(t =>
                 t.dueDate && new Date(t.dueDate) < new Date() && !['completed', 'cancelled'].includes(t.status)
             );
-            const assignedClients = clients.filter(c => c.assigned_staff?.includes(s.id));
+            const assignedClients = clients.filter(c => c.assigned_staff_id === s.id);
 
             return {
                 staff: s,
@@ -785,7 +785,7 @@ const CEODashboard: React.FC<Props> = ({
                                                             task.status === 'blocked' ? 'bg-red-100 text-red-700' :
                                                                 'bg-gray-100 text-gray-700'
                                                         }`}>
-                                                        {TASK_STATUS_LABELS[task.status]?.t || task.status}
+                                                        {TASK_STATUS_LABELS[task.status] || task.status}
                                                     </span>
                                                 </td>
                                                 <td className={`px-4 py-3 text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
@@ -848,7 +848,7 @@ const CEODashboard: React.FC<Props> = ({
                                     >
                                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 
                                   flex items-center justify-center text-white font-medium">
-                                            {s.first_name[0]}
+                                            {s.first_name?.[0] || '?'}
                                         </div>
                                         <div>
                                             <div className="font-medium">{s.first_name} {s.last_name}</div>
