@@ -185,15 +185,21 @@ const AppContent: React.FC = () => {
 
     const resolveRelatedIssues = async (docId: string) => {
         let issuesResolvedCount = 0;
-        const updatedClients = clients.map(client => {
-            const relatedIssues = client.current_workflow?.issues?.filter(i => i.related_doc_id === docId) || [];
+        const updatedClients = clients.map((client: Client) => {
+            const relatedIssues = client.current_workflow?.issues?.filter((i: IssueTicket) => i.related_doc_id === docId) || [];
             if (relatedIssues.length > 0) {
                 issuesResolvedCount += relatedIssues.length;
-                const newClient = {
+                const newClient: Client = {
                     ...client,
                     current_workflow: {
-                        ...client.current_workflow,
-                        issues: client.current_workflow?.issues?.filter(i => i.related_doc_id !== docId) || []
+                        month: client.current_workflow?.month || new Date().toISOString().slice(0, 7),
+                        vat_status: client.current_workflow?.vat_status || 'Not Started',
+                        wht_status: client.current_workflow?.wht_status || 'Not Started',
+                        closing_status: client.current_workflow?.closing_status || 'Not Started',
+                        is_locked: client.current_workflow?.is_locked || false,
+                        doc_count: client.current_workflow?.doc_count || 0,
+                        pending_count: client.current_workflow?.pending_count || 0,
+                        issues: client.current_workflow?.issues?.filter((i: IssueTicket) => i.related_doc_id !== docId) || []
                     }
                 };
                 // Async update in background
@@ -294,19 +300,19 @@ const AppContent: React.FC = () => {
     const handleUpdateClientStatus = async (status: Partial<Client['current_workflow']>) => {
         if (!selectedClientId) return;
 
-        const updatedClients = clients.map(c => {
+        const updatedClients = clients.map((c: Client) => {
             if (c.id === selectedClientId && c.current_workflow) {
                 const updatedClient: Client = {
                     ...c,
                     current_workflow: {
                         month: c.current_workflow.month || new Date().toISOString().slice(0, 7),
-                        vat_status: status.vat_status ?? c.current_workflow.vat_status ?? 'Not Started',
-                        wht_status: status.wht_status ?? c.current_workflow.wht_status ?? 'Not Started',
-                        closing_status: status.closing_status ?? c.current_workflow.closing_status ?? 'Not Started',
-                        is_locked: status.is_locked ?? c.current_workflow.is_locked ?? false,
-                        doc_count: status.doc_count ?? c.current_workflow.doc_count ?? 0,
-                        pending_count: status.pending_count ?? c.current_workflow.pending_count ?? 0,
-                        issues: status.issues ?? c.current_workflow.issues ?? []
+                        vat_status: status?.vat_status ?? c.current_workflow.vat_status ?? 'Not Started',
+                        wht_status: status?.wht_status ?? c.current_workflow.wht_status ?? 'Not Started',
+                        closing_status: status?.closing_status ?? c.current_workflow.closing_status ?? 'Not Started',
+                        is_locked: status?.is_locked ?? c.current_workflow.is_locked ?? false,
+                        doc_count: status?.doc_count ?? c.current_workflow.doc_count ?? 0,
+                        pending_count: status?.pending_count ?? c.current_workflow.pending_count ?? 0,
+                        issues: status?.issues ?? c.current_workflow.issues ?? []
                     }
                 };
                 databaseService.updateClient(updatedClient);

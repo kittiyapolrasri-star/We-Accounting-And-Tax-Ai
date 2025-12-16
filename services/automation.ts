@@ -182,7 +182,7 @@ export const matchesConditions = (
         break;
       case 'between':
         matches = Number(fieldValue) >= Number(condition.value) &&
-                  Number(fieldValue) <= Number(condition.value2 || condition.value);
+          Number(fieldValue) <= Number(condition.value2 || condition.value);
         break;
       case 'in_list':
         const valueList = Array.isArray(condition.value) ? condition.value : [condition.value];
@@ -608,8 +608,8 @@ export const getPendingTasks = (
 
   // Check client issues
   clients.forEach(client => {
-    if (client.current_workflow.issues.length > 0) {
-      const highIssues = client.current_workflow.issues.filter(i => i.severity === 'High');
+    if ((client.current_workflow?.issues?.length ?? 0) > 0) {
+      const highIssues = (client.current_workflow?.issues ?? []).filter(i => i.severity === 'High');
       if (highIssues.length > 0) {
         urgent.push({
           type: 'client_issue',
@@ -623,7 +623,7 @@ export const getPendingTasks = (
     const today = new Date();
     const dayOfMonth = today.getDate();
     if (dayOfMonth >= 1 && dayOfMonth <= 7) {
-      if (client.current_workflow.wht_status !== 'Filed/Closed') {
+      if (client.current_workflow?.wht_status !== 'Filed/Closed') {
         urgent.push({
           type: 'tax_deadline',
           description: `${client.name}: ใกล้ครบกำหนดยื่น ภ.ง.ด.`,
@@ -633,7 +633,7 @@ export const getPendingTasks = (
       }
     }
     if (dayOfMonth >= 8 && dayOfMonth <= 15) {
-      if (client.current_workflow.vat_status !== 'Filed/Closed') {
+      if (client.current_workflow?.vat_status !== 'Filed/Closed') {
         urgent.push({
           type: 'tax_deadline',
           description: `${client.name}: ใกล้ครบกำหนดยื่น ภ.พ.30`,

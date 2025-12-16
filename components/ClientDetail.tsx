@@ -170,8 +170,8 @@ const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, 
                         <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                             <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-mono text-xs">{client.tax_id}</span>
                             <span className="flex items-center gap-1"><MapPin size={14} /> {client.industry}</span>
-                            <span className={`flex items-center gap-1 font-medium bg-slate-50 px-2 py-0.5 rounded-full ${client.current_workflow.is_locked ? 'text-red-600' : 'text-emerald-600'}`}>
-                                <CheckCircle2 size={12} /> {client.current_workflow.is_locked ? 'Period Locked' : 'Open Period'}
+                            <span className={`flex items-center gap-1 font-medium bg-slate-50 px-2 py-0.5 rounded-full ${client.current_workflow?.is_locked ? 'text-red-600' : 'text-emerald-600'}`}>
+                                <CheckCircle2 size={12} /> {client.current_workflow?.is_locked ? 'Period Locked' : 'Open Period'}
                             </span>
                         </div>
                     </div>
@@ -207,13 +207,13 @@ const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, 
                         {/* Left Col */}
                         <div className="lg:col-span-2 space-y-6">
                             {/* Issues Alert */}
-                            {client.current_workflow.issues.length > 0 && (
+                            {(client.current_workflow?.issues?.length ?? 0) > 0 && (
                                 <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-start gap-4">
                                     <AlertTriangle className="text-red-500 shrink-0 mt-1" />
                                     <div>
-                                        <h3 className="font-bold text-red-700">พบปัญหาที่ต้องแก้ไข {client.current_workflow.issues.length} รายการ</h3>
+                                        <h3 className="font-bold text-red-700">พบปัญหาที่ต้องแก้ไข {client.current_workflow?.issues?.length ?? 0} รายการ</h3>
                                         <div className="mt-2 space-y-2">
-                                            {client.current_workflow.issues.map(issue => (
+                                            {(client.current_workflow?.issues ?? []).map(issue => (
                                                 <div key={issue.id} className="bg-white p-3 rounded-lg border border-red-100 shadow-sm text-sm flex justify-between items-center">
                                                     <span>{issue.title}</span>
                                                     <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded font-bold">{issue.severity}</span>
@@ -232,23 +232,23 @@ const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, 
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="bg-slate-50 p-4 rounded-xl text-center border border-slate-100">
                                         <p className="text-xs text-slate-400 font-bold uppercase mb-2">VAT (ภ.พ.30)</p>
-                                        <div className={`text-sm font-bold px-3 py-1.5 rounded-lg inline-block ${client.current_workflow.vat_status === 'Filed/Closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                        <div className={`text-sm font-bold px-3 py-1.5 rounded-lg inline-block ${client.current_workflow?.vat_status === 'Filed/Closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
                                             }`}>
-                                            {client.current_workflow.vat_status}
+                                            {client.current_workflow?.vat_status ?? 'Not Started'}
                                         </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-xl text-center border border-slate-100">
                                         <p className="text-xs text-slate-400 font-bold uppercase mb-2">WHT (50 ทวิ)</p>
-                                        <div className={`text-sm font-bold px-3 py-1.5 rounded-lg inline-block ${client.current_workflow.wht_status === 'Filed/Closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                                        <div className={`text-sm font-bold px-3 py-1.5 rounded-lg inline-block ${client.current_workflow?.wht_status === 'Filed/Closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
                                             }`}>
-                                            {client.current_workflow.wht_status}
+                                            {client.current_workflow?.wht_status ?? 'Not Started'}
                                         </div>
                                     </div>
                                     <div className="bg-slate-50 p-4 rounded-xl text-center border border-slate-100">
                                         <p className="text-xs text-slate-400 font-bold uppercase mb-2">Closing</p>
-                                        <div className={`text-sm font-bold px-3 py-1.5 rounded-lg inline-block ${client.current_workflow.closing_status === 'Filed/Closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                                        <div className={`text-sm font-bold px-3 py-1.5 rounded-lg inline-block ${client.current_workflow?.closing_status === 'Filed/Closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
                                             }`}>
-                                            {client.current_workflow.closing_status}
+                                            {client.current_workflow?.closing_status ?? 'Not Started'}
                                         </div>
                                     </div>
                                 </div>
