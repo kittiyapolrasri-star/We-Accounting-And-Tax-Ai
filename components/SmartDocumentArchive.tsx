@@ -8,7 +8,8 @@ interface Props {
     clients: Client[];
     staff: Staff[];
     onReview?: (doc: DocumentRecord) => void;
-    onBatchApprove?: (docIds: string[]) => void; // New Prop
+    onBatchApprove?: (docIds: string[]) => void;
+    onBatchDelete?: (docIds: string[]) => void;
 }
 
 // Helper to structure flat list into hierarchical tree
@@ -32,7 +33,7 @@ const buildHierarchy = (docs: DocumentRecord[], clients: Client[]) => {
     return tree;
 };
 
-const SmartDocumentArchive: React.FC<Props> = ({ documents, clients, staff, onReview, onBatchApprove }) => {
+const SmartDocumentArchive: React.FC<Props> = ({ documents, clients, staff, onReview, onBatchApprove, onBatchDelete }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const [currentPath, setCurrentPath] = useState<string[]>([]); // [] = Root, ['Client A'] = Client Level, etc.
     const [selectedDocs, setSelectedDocs] = useState<Set<string>>(new Set());
@@ -116,7 +117,9 @@ const SmartDocumentArchive: React.FC<Props> = ({ documents, clients, staff, onRe
                         <button
                             onClick={() => {
                                 if (window.confirm(`ต้องการลบเอกสาร ${selectedDocs.size} รายการ?`)) {
-                                    alert(`ลบเอกสาร ${selectedDocs.size} รายการสำเร็จ (ฟังก์ชันกำลังพัฒนา)`);
+                                    if (onBatchDelete) {
+                                        onBatchDelete(Array.from(selectedDocs));
+                                    }
                                     setSelectedDocs(new Set());
                                 }
                             }}
@@ -298,8 +301,8 @@ const SmartDocumentArchive: React.FC<Props> = ({ documents, clients, staff, onRe
                                                     <span className="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded-full">{item.count} รายการ</span>
                                                 ) : (
                                                     <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-full ${item.data.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
-                                                            item.data.status === 'pending_review' ? 'bg-amber-50 text-amber-600' :
-                                                                'bg-slate-50 text-slate-500'
+                                                        item.data.status === 'pending_review' ? 'bg-amber-50 text-amber-600' :
+                                                            'bg-slate-50 text-slate-500'
                                                         }`}>
                                                         {item.data.status === 'approved' ? 'บันทึกแล้ว' :
                                                             item.data.status === 'pending_review' ? 'รอตรวจสอบ' : item.data.status}
