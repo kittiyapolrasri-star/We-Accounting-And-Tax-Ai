@@ -248,13 +248,13 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
       draftPayslips.forEach(ps => {
         totalSalary += ps.earnings.baseSalary || 0;
         totalAllowances += (ps.earnings.positionAllowance || 0) +
-                          (ps.earnings.housingAllowance || 0) +
-                          (ps.earnings.transportAllowance || 0) +
-                          (ps.earnings.mealAllowance || 0) +
-                          (ps.earnings.otherAllowance || 0) +
-                          (ps.earnings.commission || 0) +
-                          (ps.earnings.bonus || 0) +
-                          (ps.earnings.overtime || 0);
+          (ps.earnings.housingAllowance || 0) +
+          (ps.earnings.transportAllowance || 0) +
+          (ps.earnings.mealAllowance || 0) +
+          (ps.earnings.otherAllowance || 0) +
+          (ps.earnings.commission || 0) +
+          (ps.earnings.bonus || 0) +
+          (ps.earnings.overtime || 0);
         totalWht += ps.wht;
         totalSso += ps.deductions.sso;
         totalProvidentFund += ps.deductions.providentFund || 0;
@@ -432,9 +432,8 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
     <div className="animate-in fade-in duration-500 p-6">
       {/* Notification */}
       {notification && (
-        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 ${
-          notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
-        }`}>
+        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 ${notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
+          }`}>
           {notification.type === 'success' ? <CheckCircle2 size={20} className="text-emerald-500" /> : <AlertCircle size={20} className="text-red-500" />}
           <span className="font-semibold text-sm">{notification.message}</span>
         </div>
@@ -477,11 +476,10 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
                 ? 'bg-white text-blue-700 shadow-sm'
                 : 'text-slate-600 hover:text-slate-800'
-            }`}
+              }`}
           >
             <tab.icon size={18} />
             {tab.label}
@@ -548,11 +546,10 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                       ฿{formatThaiCurrency(salaryData[emp.id]?.baseSalary || 0)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                        emp.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                        emp.status === 'resigned' ? 'bg-slate-100 text-slate-600' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${emp.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                          emp.status === 'resigned' ? 'bg-slate-100 text-slate-600' :
+                            'bg-amber-100 text-amber-700'
+                        }`}>
                         {emp.status === 'active' ? 'ปฏิบัติงาน' : emp.status === 'resigned' ? 'ลาออก' : 'พักงาน'}
                       </span>
                     </td>
@@ -629,7 +626,29 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                   อนุมัติและบันทึกบัญชี
                 </button>
               )}
-              <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+              <button
+                onClick={() => {
+                  const headers = ['พนักงาน', 'เงินเดือน', 'รายได้รวม', 'หัก ณ ที่จ่าย', 'ประกันสังคม', 'รับสุทธิ', 'สถานะ'];
+                  const rows = filteredPayslips.map(ps => [
+                    getEmployeeName(ps.employeeId),
+                    ps.earnings.baseSalary || 0,
+                    ps.totalEarnings,
+                    ps.wht,
+                    ps.deductions.sso,
+                    ps.netPay,
+                    ps.status === 'approved' ? 'อนุมัติแล้ว' : 'รอตรวจ'
+                  ]);
+                  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `payroll_${selectedYear}_${selectedMonth}.csv`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
                 <Download size={18} />
                 Export Excel
               </button>
@@ -698,11 +717,10 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                           <p className="text-xs text-slate-500">สุทธิ</p>
                           <p className="font-bold text-emerald-600">฿{formatThaiCurrency(ps.netPay)}</p>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          ps.status === 'draft' ? 'bg-amber-100 text-amber-700' :
-                          ps.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${ps.status === 'draft' ? 'bg-amber-100 text-amber-700' :
+                            ps.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                              'bg-blue-100 text-blue-700'
+                          }`}>
                           {ps.status === 'draft' ? 'รอตรวจ' : ps.status === 'approved' ? 'อนุมัติแล้ว' : 'จ่ายแล้ว'}
                         </span>
                         {expandedPayslip === ps.id ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
@@ -792,11 +810,17 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
 
                         {/* Actions */}
                         <div className="mt-4 pt-4 border-t border-slate-200 flex gap-2">
-                          <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors">
+                          <button
+                            onClick={() => window.print()}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors"
+                          >
                             <Printer size={16} />
                             พิมพ์สลิป
                           </button>
-                          <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors">
+                          <button
+                            onClick={() => alert(`กำลังส่งสลิปเงินเดือนไปยังอีเมลพนักงาน (ฟังก์ชันกำลังพัฒนา)`)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors"
+                          >
                             <Send size={16} />
                             ส่งอีเมล
                           </button>
