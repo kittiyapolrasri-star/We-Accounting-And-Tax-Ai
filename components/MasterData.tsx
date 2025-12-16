@@ -300,9 +300,8 @@ const MasterData: React.FC<Props> = ({ clients }) => {
     <div className="animate-in fade-in duration-500 p-6">
       {/* Notification */}
       {notification && (
-        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 ${
-          notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
-        }`}>
+        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 ${notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
+          }`}>
           {notification.type === 'success' ? <CheckCircle size={20} className="text-emerald-500" /> : <AlertTriangle size={20} className="text-red-500" />}
           <span className="font-semibold text-sm">{notification.message}</span>
         </div>
@@ -342,11 +341,10 @@ const MasterData: React.FC<Props> = ({ clients }) => {
           <button
             key={tab.id}
             onClick={() => { setActiveTab(tab.id as any); setSearchTerm(''); setFilterStatus('all'); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
                 ? 'bg-white text-blue-700 shadow-sm'
                 : 'text-slate-600 hover:text-slate-800'
-            }`}
+              }`}
           >
             <tab.icon size={18} />
             {tab.label}
@@ -393,7 +391,21 @@ const MasterData: React.FC<Props> = ({ clients }) => {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+              <button
+                onClick={() => {
+                  const headers = ['รหัส', 'ชื่อ', 'เลขประจำตัว', 'ประเภท', 'เครดิต', 'วงเงิน', 'สถานะ'];
+                  const rows = filteredVendors.map(v => [v.code, v.name, v.taxId, v.vendorType, v.paymentTerms, v.creditLimit || 0, v.status]);
+                  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'vendors_export.csv';
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+              >
                 <Download size={18} />
                 Export
               </button>
@@ -550,20 +562,18 @@ const MasterData: React.FC<Props> = ({ clients }) => {
                   return (
                     <div key={level} className="flex items-start gap-4">
                       <div className="w-24 shrink-0">
-                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
-                          level === 4 ? 'bg-purple-100 text-purple-700' :
-                          level === 3 ? 'bg-blue-100 text-blue-700' :
-                          level === 2 ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-slate-100 text-slate-600'
-                        }`}>
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${level === 4 ? 'bg-purple-100 text-purple-700' :
+                            level === 3 ? 'bg-blue-100 text-blue-700' :
+                              level === 2 ? 'bg-emerald-100 text-emerald-700' :
+                                'bg-slate-100 text-slate-600'
+                          }`}>
                           L{level}
                         </span>
                       </div>
                       <div className="flex-1 flex flex-wrap gap-3">
                         {levelAuthorities.map(auth => (
-                          <div key={auth.id} className={`p-3 rounded-xl border ${
-                            auth.status === 'active' ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'
-                          }`}>
+                          <div key={auth.id} className={`p-3 rounded-xl border ${auth.status === 'active' ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'
+                            }`}>
                             <div className="flex items-center gap-2 mb-2">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
                                 {auth.staffName.charAt(0)}
@@ -636,12 +646,11 @@ const MasterData: React.FC<Props> = ({ clients }) => {
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">{auth.role}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                        auth.approvalLevel === 4 ? 'bg-purple-100 text-purple-700' :
-                        auth.approvalLevel === 3 ? 'bg-blue-100 text-blue-700' :
-                        auth.approvalLevel === 2 ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${auth.approvalLevel === 4 ? 'bg-purple-100 text-purple-700' :
+                          auth.approvalLevel === 3 ? 'bg-blue-100 text-blue-700' :
+                            auth.approvalLevel === 2 ? 'bg-emerald-100 text-emerald-700' :
+                              'bg-slate-100 text-slate-600'
+                        }`}>
                         {auth.approvalLevel}
                       </span>
                     </td>
@@ -665,9 +674,8 @@ const MasterData: React.FC<Props> = ({ clients }) => {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                        auth.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                      }`}>
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${auth.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                        }`}>
                         {auth.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
                       </span>
                     </td>
@@ -1041,11 +1049,10 @@ const AuthorityModal: React.FC<AuthorityModalProps> = ({ authority, onSave, onCl
                   key={type}
                   type="button"
                   onClick={() => toggleDocType(type)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    formData.documentTypes?.includes(type)
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${formData.documentTypes?.includes(type)
                       ? 'bg-blue-100 text-blue-700 border border-blue-200'
                       : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   {type}
                 </button>
