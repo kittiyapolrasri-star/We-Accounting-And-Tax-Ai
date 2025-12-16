@@ -24,6 +24,7 @@ interface Props {
     onUpdateRules: (rules: VendorRule[]) => void;
     onBack: () => void;
     onReviewDoc: (doc: DocumentRecord) => void;
+    onUploadDocument?: () => void;
 
     // Systematic Actions
     onLockPeriod: () => void;
@@ -33,7 +34,7 @@ interface Props {
     onUpdateStatus: (status: Partial<Client['current_workflow']>) => void;
 }
 
-const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, onUpdateRules, onBack, onReviewDoc, onLockPeriod, onPostJournal, onBatchApprove, onAddAsset, onUpdateStatus }) => {
+const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, onUpdateRules, onBack, onReviewDoc, onUploadDocument, onLockPeriod, onPostJournal, onBatchApprove, onAddAsset, onUpdateStatus }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'financials' | 'pl' | 'bs' | 'assets' | 'gl' | 'audit' | 'coa' | 'notes' | 'settings'>('overview');
     const [glFilter, setGlFilter] = useState<string | null>(null);
 
@@ -181,7 +182,10 @@ const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, 
                         <p className="text-xs text-slate-400">ผู้ดูแลบัญชี (Account Manager)</p>
                         <p className="font-semibold text-slate-700">{getAssignedStaffName()}</p>
                     </div>
-                    <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm">
+                    <button
+                        onClick={onUploadDocument}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
+                    >
                         <Upload size={16} /> อัปโหลดเอกสาร
                     </button>
                 </div>
@@ -516,7 +520,10 @@ const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, 
                                             <p className="font-semibold text-slate-700 text-sm">Mapping ผังบัญชี</p>
                                             <p className="text-xs text-slate-400">ใช้ผังบัญชีมาตรฐาน NPAEs</p>
                                         </div>
-                                        <button className="text-blue-600 text-xs font-bold hover:underline">แก้ไข</button>
+                                        <button
+                                            onClick={() => alert('ฟังก์ชันแก้ไขผังบัญชีกำลังพัฒนา')}
+                                            className="text-blue-600 text-xs font-bold hover:underline"
+                                        >แก้ไข</button>
                                     </div>
                                 </div>
                             </div>

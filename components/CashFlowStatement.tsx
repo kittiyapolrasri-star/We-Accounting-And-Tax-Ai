@@ -396,11 +396,34 @@ const CashFlowStatement: React.FC<Props> = ({ clients, glEntries }) => {
           </select>
 
           {/* Actions */}
-          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+          >
             <Printer size={18} />
             พิมพ์
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+          <button
+            onClick={() => {
+              const data = {
+                period: getPeriodLabel(),
+                client: clients.find(c => c.id === selectedClientId)?.name,
+                operating: cashFlows.operating,
+                investing: cashFlows.investing,
+                financing: cashFlows.financing,
+                netChange: cashFlows.netChange
+              };
+              const dataStr = JSON.stringify(data, null, 2);
+              const blob = new Blob([dataStr], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `cashflow_${selectedClientId}_${selectedYear}_${selectedMonth}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+          >
             <Download size={18} />
             Export
           </button>
@@ -415,17 +438,15 @@ const CashFlowStatement: React.FC<Props> = ({ clients, glEntries }) => {
             <div className="flex bg-slate-100 p-1 rounded-lg">
               <button
                 onClick={() => setViewMode('monthly')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'monthly' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600'
-                }`}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'monthly' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600'
+                  }`}
               >
                 รายเดือน
               </button>
               <button
                 onClick={() => setViewMode('yearly')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'yearly' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600'
-                }`}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'yearly' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600'
+                  }`}
               >
                 รายปี
               </button>
@@ -469,7 +490,11 @@ const CashFlowStatement: React.FC<Props> = ({ clients, glEntries }) => {
                 <option value="direct">ทางตรง (Direct)</option>
                 <option value="indirect">ทางอ้อม (Indirect)</option>
               </select>
-              <button className="p-1 text-slate-400 hover:text-slate-600" title="ข้อมูลเพิ่มเติม">
+              <button
+                onClick={() => alert('วิธีทางตรง (Direct): แสดงเงินสดรับ-จ่ายโดยตรง\nวิธีทางอ้อม (Indirect): เริ่มจากกำไรสุทธิแล้วปรับปรุง')}
+                className="p-1 text-slate-400 hover:text-slate-600"
+                title="ข้อมูลเพิ่มเติม"
+              >
                 <HelpCircle size={16} />
               </button>
             </div>
