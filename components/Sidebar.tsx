@@ -29,11 +29,11 @@ interface MenuGroup {
 }
 
 const WeLogo = () => (
-  <svg width="40" height="30" viewBox="0 0 50 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-    <path d="M10 25L18 17" stroke="#3B82F6" strokeWidth="8" strokeLinecap="round" />
-    <path d="M18 17L28 27" stroke="#22D3EE" strokeWidth="8" strokeLinecap="round" />
-    <path d="M28 27L42 5" stroke="#3B82F6" strokeWidth="8" strokeLinecap="round" />
-  </svg>
+  <img
+    src="/icon/S__111992841_0.jpg"
+    alt="Company Logo"
+    className="w-10 h-10 object-contain rounded-lg shadow-sm shrink-0"
+  />
 );
 
 const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manager' }) => {
