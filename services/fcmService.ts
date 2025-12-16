@@ -154,14 +154,16 @@ class FirebaseCloudMessagingService {
                 active: true
             }).catch(() => {
                 // Document doesn't exist, create it
-                addDoc(collection(db, COLLECTIONS.FCM_TOKENS), {
-                    userId,
-                    token,
-                    platform: 'web',
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                    active: true
-                });
+                if (db) {
+                    addDoc(collection(db, COLLECTIONS.FCM_TOKENS), {
+                        userId,
+                        token,
+                        platform: 'web',
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                        active: true
+                    });
+                }
             });
         } catch (error) {
             console.error('Error saving FCM token:', error);
@@ -304,12 +306,13 @@ class FirebaseCloudMessagingService {
 
             const snapshot = await getDocs(q);
 
-            const updates = snapshot.docs.map(docSnap =>
-                updateDoc(doc(db, COLLECTIONS.NOTIFICATIONS, docSnap.id), {
+            const updates = snapshot.docs.map(docSnap => {
+                if (!db) return Promise.resolve();
+                return updateDoc(doc(db, COLLECTIONS.NOTIFICATIONS, docSnap.id), {
                     read: true,
                     readAt: serverTimestamp()
-                })
-            );
+                });
+            });
 
             await Promise.all(updates);
         } catch (error) {

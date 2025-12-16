@@ -76,17 +76,17 @@ class TaskDatabaseService {
             updatedAt: now,
             progress: task.progress || 0,
             timeSpent: task.timeSpent || 0,
+            timeEntries: task.timeEntries || [],
             comments: task.comments || [],
-            activity: task.activity || [{
+            activityLog: task.activityLog || [{
                 id: `act-${Date.now()}`,
-                type: 'created',
+                action: 'created',
                 timestamp: now,
-                userId: task.createdBy || 'system',
+                userId: task.assignedBy || 'system',
                 userName: 'ระบบ',
                 details: 'สร้างงานใหม่'
             }],
-            attachments: task.attachments || [],
-            watchers: task.watchers || [],
+            properties: task.properties || [],
             tags: task.tags || [],
             checklist: task.checklist || []
         };
@@ -317,11 +317,11 @@ class TaskDatabaseService {
         if (updates.status) {
             const task = await this.getTaskById(taskId);
             if (task && task.status !== updates.status) {
-                updateData.activity = [
-                    ...(task.activity || []),
+                updateData.activityLog = [
+                    ...(task.activityLog || []),
                     {
                         id: `act-${Date.now()}`,
-                        type: 'status_changed',
+                        action: 'status_changed' as const,
                         timestamp: now,
                         userId: 'current_user',
                         userName: 'ผู้ใช้',
@@ -377,11 +377,11 @@ class TaskDatabaseService {
             assignedTo: staffId,
             assignedBy,
             assignedAt: now,
-            activity: [
-                ...(task?.activity || []),
+            activityLog: [
+                ...(task?.activityLog || []),
                 {
                     id: `act-${Date.now()}`,
-                    type: 'assigned',
+                    action: 'assigned' as const,
                     timestamp: now,
                     userId: assignedBy,
                     userName: 'ผู้มอบหมาย',
@@ -433,12 +433,13 @@ class TaskDatabaseService {
 
         const newComment = {
             id: `comment-${Date.now()}`,
-            authorId: userId,
-            authorName: userName,
+            userId,
+            userName,
             content,
             mentions: mentions || [],
             reactions: [],
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            isEdited: false
         };
 
         await this.updateTask(taskId, {
