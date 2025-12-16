@@ -663,7 +663,19 @@ const BankReconciliation: React.FC<Props> = ({ documents, clients, onPostAdjustm
         <p className="text-sm text-slate-500 mb-4">
           ไฟล์ CSV ต้องมีคอลัมน์: Date, Description, Debit, Credit, Balance
         </p>
-        <button className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium">
+        <button
+          onClick={() => {
+            const template = 'Date,Description,Debit,Credit,Balance\n2024-01-01,Sample Transaction,1000,0,1000';
+            const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'bank_statement_template.csv';
+            link.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+        >
           <Download size={16} />
           ดาวน์โหลด Template
         </button>

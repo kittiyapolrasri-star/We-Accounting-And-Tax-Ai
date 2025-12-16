@@ -55,10 +55,16 @@ const FinancialNotes: React.FC<Props> = ({ client, entries }) => {
                         {isEditing ? <Save size={16} /> : <Edit3 size={16} />}
                         {isEditing ? 'Done Editing' : 'Edit Notes'}
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-100 transition-colors shadow-sm text-slate-600">
+                    <button
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-100 transition-colors shadow-sm text-slate-600"
+                    >
                         <Printer size={16} /> Print
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-md">
+                    <button
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-md"
+                    >
                         <Download size={16} /> Export PDF
                     </button>
                 </div>
