@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Client, DocumentRecord, Staff, PostedGLEntry, VendorRule, FixedAsset, WorkflowStatus } from '../types';
-import { ArrowLeft, Building2, MapPin, Phone, Mail, FileText, CheckCircle2, AlertTriangle, PieChart, CalendarDays, Upload, Clock, BookOpen, Settings, BarChart4, X, Scale, ShieldCheck, FolderOpen, Save, Trash, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Phone, Mail, FileText, CheckCircle2, AlertTriangle, PieChart, CalendarDays, Upload, Clock, BookOpen, Settings, BarChart4, X, Scale, ShieldCheck, FolderOpen, Save, Trash, Plus, Loader2, Edit2 } from 'lucide-react';
 import DocumentList from './DocumentList';
 import TrialBalance from './TrialBalance';
 import ProfitAndLoss from './ProfitAndLoss';
@@ -25,6 +25,7 @@ interface Props {
     onBack: () => void;
     onReviewDoc: (doc: DocumentRecord) => void;
     onUploadDocument?: () => void;
+    onEditClient?: () => void;
 
     // Systematic Actions
     onLockPeriod: () => void;
@@ -34,7 +35,7 @@ interface Props {
     onUpdateStatus: (status: Partial<Client['current_workflow']>) => void;
 }
 
-const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, onUpdateRules, onBack, onReviewDoc, onUploadDocument, onLockPeriod, onPostJournal, onBatchApprove, onAddAsset, onUpdateStatus }) => {
+const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, onUpdateRules, onBack, onReviewDoc, onUploadDocument, onEditClient, onLockPeriod, onPostJournal, onBatchApprove, onAddAsset, onUpdateStatus }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'documents' | 'financials' | 'pl' | 'bs' | 'assets' | 'gl' | 'audit' | 'coa' | 'notes' | 'settings'>('overview');
     const [glFilter, setGlFilter] = useState<string | null>(null);
 
@@ -182,12 +183,20 @@ const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, 
                         <p className="text-xs text-slate-400">ผู้ดูแลบัญชี (Account Manager)</p>
                         <p className="font-semibold text-slate-700">{getAssignedStaffName()}</p>
                     </div>
-                    <button
-                        onClick={onUploadDocument}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
-                    >
-                        <Upload size={16} /> อัปโหลดเอกสาร
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={onEditClient}
+                            className="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 flex items-center gap-2 shadow-sm"
+                        >
+                            <Edit2 size={16} /> แก้ไข
+                        </button>
+                        <button
+                            onClick={onUploadDocument}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center gap-2 shadow-sm"
+                        >
+                            <Upload size={16} /> อัปโหลดเอกสาร
+                        </button>
+                    </div>
                 </div>
             </div>
 

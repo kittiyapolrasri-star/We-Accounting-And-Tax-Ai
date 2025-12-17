@@ -49,6 +49,7 @@ import ECommerceSyncDashboard from './components/ECommerceSyncDashboard';
 import RecurringTasksManager from './components/RecurringTasksManager';
 import SalesDataImport from './components/SalesDataImport';
 import SimpleAddClientModal from './components/SimpleAddClientModal';
+import EditClientModal from './components/EditClientModal';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
@@ -92,6 +93,7 @@ const AppContent: React.FC = () => {
     // Specific View States
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [showAddClientModal, setShowAddClientModal] = useState(false);
+    const [showEditClientModal, setShowEditClientModal] = useState(false);
     const [reviewDocId, setReviewDocId] = useState<string | null>(null);
 
     // Upload Queue State
@@ -907,6 +909,27 @@ const AppContent: React.FC = () => {
         }
     };
 
+    // --- EDIT CLIENT ---
+    const handleEditClient = async (clientData: Partial<Client>) => {
+        try {
+            if (!clientData.id) return;
+
+            const updatedClient = {
+                ...clientData,
+                updated_at: new Date().toISOString()
+            } as Client;
+
+            await databaseService.updateClient(updatedClient);
+
+            setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+            setShowEditClientModal(false);
+            showNotification(`อัปเดตข้อมูลลูกค้า ${clientData.name} สำเร็จ`, 'success');
+        } catch (error) {
+            console.error('Error updating client:', error);
+            showNotification('ไม่สามารถอัปเดตข้อมูลลูกค้าได้', 'error');
+        }
+    };
+
     // --- TASK MANAGEMENT HANDLERS ---
     const handleCreateTask = async (data: Partial<Task>) => {
         const now = new Date().toISOString();
@@ -1118,6 +1141,7 @@ const AppContent: React.FC = () => {
                     onUpdateRules={handleUpdateRules}
                     onBack={() => setCurrentView('command-center')}
                     onReviewDoc={handleOpenReview}
+                    onEditClient={() => setShowEditClientModal(true)}
 
                     // SYSTEMATIC: Pass action handlers for Locking & GL Posting & Status Updates
                     onLockPeriod={handleLockPeriod}
@@ -1363,6 +1387,15 @@ const AppContent: React.FC = () => {
                 <SimpleAddClientModal
                     onClose={() => setShowAddClientModal(false)}
                     onSubmit={handleCreateClient}
+                />
+            )}
+
+            {/* Edit Client Modal */}
+            {showEditClientModal && selectedClientId && (
+                <EditClientModal
+                    client={clients.find(c => c.id === selectedClientId)!}
+                    onClose={() => setShowEditClientModal(false)}
+                    onSubmit={handleEditClient}
                 />
             )}
 
