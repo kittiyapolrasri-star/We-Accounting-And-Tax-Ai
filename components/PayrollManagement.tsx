@@ -477,8 +477,8 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
-                ? 'bg-white text-blue-700 shadow-sm'
-                : 'text-slate-600 hover:text-slate-800'
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-slate-600 hover:text-slate-800'
               }`}
           >
             <tab.icon size={18} />
@@ -547,8 +547,8 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${emp.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
-                          emp.status === 'resigned' ? 'bg-slate-100 text-slate-600' :
-                            'bg-amber-100 text-amber-700'
+                        emp.status === 'resigned' ? 'bg-slate-100 text-slate-600' :
+                          'bg-amber-100 text-amber-700'
                         }`}>
                         {emp.status === 'active' ? 'ปฏิบัติงาน' : emp.status === 'resigned' ? 'ลาออก' : 'พักงาน'}
                       </span>
@@ -718,8 +718,8 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                           <p className="font-bold text-emerald-600">฿{formatThaiCurrency(ps.netPay)}</p>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${ps.status === 'draft' ? 'bg-amber-100 text-amber-700' :
-                            ps.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                              'bg-blue-100 text-blue-700'
+                          ps.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-blue-100 text-blue-700'
                           }`}>
                           {ps.status === 'draft' ? 'รอตรวจ' : ps.status === 'approved' ? 'อนุมัติแล้ว' : 'จ่ายแล้ว'}
                         </span>
@@ -818,7 +818,16 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                             พิมพ์สลิป
                           </button>
                           <button
-                            onClick={() => alert(`กำลังส่งสลิปเงินเดือนไปยังอีเมลพนักงาน (ฟังก์ชันกำลังพัฒนา)`)}
+                            onClick={() => {
+                              console.log('Send email clicked for employee payslip');
+                              // Email functionality would require SMTP configuration
+                              // For now show in-app notification
+                              const notification = document.createElement('div');
+                              notification.className = 'fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in slide-in-from-bottom duration-200';
+                              notification.textContent = 'กำลังเตรียมส่งอีเมล... (ต้องตั้งค่า SMTP Server)';
+                              document.body.appendChild(notification);
+                              setTimeout(() => notification.remove(), 3000);
+                            }}
                             className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors"
                           >
                             <Send size={16} />
