@@ -16,18 +16,23 @@ interface Props {
   staff: Staff[];
   clients: Client[];
   currentUserId: string;
+  onApproveTask?: (taskId: string, taskName: string) => void;
+  onViewTask?: (taskId: string, taskName: string) => void;
 }
 
 const WorkflowDashboard: React.FC<Props> = ({
   documents,
   staff,
   clients,
-  currentUserId
+  currentUserId,
+  onApproveTask,
+  onViewTask
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'my-tasks' | 'workflows' | 'notifications' | 'settings'>('overview');
   const [workflows, setWorkflows] = useState<WorkflowDefinition[]>(DEFAULT_WORKFLOW_DEFINITIONS);
   const [instances, setInstances] = useState<WorkflowInstance[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Mock some instances for demo
   useEffect(() => {
@@ -59,6 +64,72 @@ const WorkflowDashboard: React.FC<Props> = ({
   // Get current user's pending tasks
   const myTasks = getStaffPendingTasks(currentUserId, instances, workflows);
   const stats = getWorkflowStatistics(instances, workflows);
+
+  // Handler functions
+  const handleApproveTask = (taskId: string, taskName: string) => {
+    if (onApproveTask) {
+      onApproveTask(taskId, taskName);
+    } else {
+      // Update local state
+      setInstances(prev => prev.map(inst =>
+        inst.assignments.some(a => a.stepId === taskId)
+          ? { ...inst, status: 'completed' as const }
+          : inst
+      ));
+      setSuccessMessage(`อนุมัติ ${taskName} สำเร็จ!`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    }
+  };
+
+  const handleViewTask = (taskId: string, taskName: string) => {
+    if (onViewTask) {
+      onViewTask(taskId, taskName);
+    } else {
+      setSuccessMessage(`กำลังดูรายละเอียด: ${taskName}`);
+      setTimeout(() => setSuccessMessage(null), 2000);
+    }
+  };
+
+  const handleCreateWorkflow = () => {
+    const newWorkflow: WorkflowDefinition = {
+      id: `WF-${Date.now()}`,
+      name: `กระบวนการใหม่ ${workflows.length + 1}`,
+      description: 'กระบวนการที่สร้างใหม่',
+      triggerType: 'manual',
+      triggerConditions: [],
+      steps: [{
+        id: `STEP-${Date.now()}`,
+        order: 1,
+        name: 'ขั้นตอนที่ 1',
+        type: 'approval',
+        assigneeType: 'role',
+        assigneeRole: 'accountant',
+        requiredApprovals: 1,
+        slaHours: 24,
+        escalationEnabled: true,
+        escalationAfterHours: 48,
+        escalationTo: 'manager',
+        actions: [{ type: 'approve', params: { autoPost: false } }]
+      }],
+      slaHours: 24,
+      enabled: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    setWorkflows(prev => [...prev, newWorkflow]);
+    setSuccessMessage('สร้างกระบวนการใหม่สำเร็จ!');
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handleToggleWorkflow = (workflowId: string) => {
+    setWorkflows(prev => prev.map(wf =>
+      wf.id === workflowId ? { ...wf, enabled: !wf.enabled } : wf
+    ));
+    const workflow = workflows.find(wf => wf.id === workflowId);
+    setSuccessMessage(`${workflow?.enabled ? 'ปิด' : 'เปิด'}ใช้งาน ${workflow?.name} แล้ว`);
+    setTimeout(() => setSuccessMessage(null), 2000);
+  };
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('th-TH', {
@@ -156,8 +227,8 @@ const WorkflowDashboard: React.FC<Props> = ({
               <React.Fragment key={stage}>
                 <div className="text-center">
                   <div className={`w-16 h-16 rounded-full flex items-center justify-center ${i === 0 ? 'bg-blue-500 text-white' :
-                      i === 3 ? 'bg-green-500 text-white' :
-                        'bg-slate-100 text-slate-600'
+                    i === 3 ? 'bg-green-500 text-white' :
+                      'bg-slate-100 text-slate-600'
                     }`}>
                     {i === 0 ? stats.totalActive :
                       i === 3 ? stats.totalCompleted :
@@ -342,14 +413,14 @@ const WorkflowDashboard: React.FC<Props> = ({
                       </span>
                       <div className="flex gap-2 mt-2">
                         <button
-                          onClick={() => alert(`อนุมัติ ${task.stepName} สำเร็จ!`)}
+                          onClick={() => handleApproveTask(task.instanceId, task.stepName)}
                           className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 flex items-center gap-1"
                         >
                           <CheckCircle size={14} />
                           อนุมัติ
                         </button>
                         <button
-                          onClick={() => alert(`กำลังดูรายละเอียด ${task.stepName}`)}
+                          onClick={() => handleViewTask(task.instanceId, task.stepName)}
                           className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-200 flex items-center gap-1"
                         >
                           <Eye size={14} />
@@ -373,7 +444,7 @@ const WorkflowDashboard: React.FC<Props> = ({
       <div className="flex justify-between items-center">
         <h3 className="font-semibold text-slate-800">กระบวนการทำงานที่กำหนด</h3>
         <button
-          onClick={() => alert('ฟังก์ชันสร้างกระบวนการใหม่กำลังพัฒนา')}
+          onClick={handleCreateWorkflow}
           className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 flex items-center gap-2"
         >
           <Zap size={16} />
@@ -402,8 +473,9 @@ const WorkflowDashboard: React.FC<Props> = ({
                     {workflow.enabled ? 'เปิดใช้งาน' : 'ปิดใช้งาน'}
                   </span>
                   <button
-                    onClick={() => alert(`ตั้งค่า Workflow: ${workflow.name}`)}
+                    onClick={() => handleToggleWorkflow(workflow.id)}
                     className="p-2 hover:bg-slate-100 rounded-lg"
+                    title="เปิด/ปิดการใช้งาน"
                   >
                     <Settings size={18} className="text-slate-400" />
                   </button>
@@ -522,9 +594,9 @@ const WorkflowDashboard: React.FC<Props> = ({
             <div key={i} className={`p-4 hover:bg-slate-50 ${i === 0 ? 'bg-blue-50/50' : ''}`}>
               <div className="flex items-start gap-3">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${notif.priority === 'urgent' ? 'bg-red-100 text-red-600' :
-                    notif.priority === 'high' ? 'bg-amber-100 text-amber-600' :
-                      notif.priority === 'medium' ? 'bg-blue-100 text-blue-600' :
-                        'bg-green-100 text-green-600'
+                  notif.priority === 'high' ? 'bg-amber-100 text-amber-600' :
+                    notif.priority === 'medium' ? 'bg-blue-100 text-blue-600' :
+                      'bg-green-100 text-green-600'
                   }`}>
                   {notif.type === 'assignment' ? <Play size={18} /> :
                     notif.type === 'escalation' ? <AlertTriangle size={18} /> :
@@ -638,8 +710,8 @@ const WorkflowDashboard: React.FC<Props> = ({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors relative ${isActive
-                    ? 'bg-white text-blue-600 border border-slate-200 border-b-white -mb-px'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                  ? 'bg-white text-blue-600 border border-slate-200 border-b-white -mb-px'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
                   }`}
               >
                 <Icon size={18} />

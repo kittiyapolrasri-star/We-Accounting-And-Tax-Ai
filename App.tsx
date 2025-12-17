@@ -930,6 +930,39 @@ const AppContent: React.FC = () => {
         }
     };
 
+    // --- STAFF MANAGEMENT HANDLERS ---
+    const handleAddStaff = async (staffData: Omit<Staff, 'id'>) => {
+        try {
+            const newId = await databaseService.addStaff(staffData);
+            const newStaff = { ...staffData, id: newId } as Staff;
+            setStaff(prev => [...prev, newStaff]);
+            showNotification(`เพิ่มพนักงาน ${staffData.name} สำเร็จ`, 'success');
+            await logAction('UPLOAD', `Added new staff: ${staffData.name}`);
+        } catch (error) {
+            console.error('Error adding staff:', error);
+            showNotification('ไม่สามารถเพิ่มพนักงานได้', 'error');
+        }
+    };
+
+    const handleViewStaffHistory = (staffId: string) => {
+        const staffMember = staff.find(s => s.id === staffId);
+        if (staffMember) {
+            // Navigate to staff detail or show history modal
+            setSelectedClientId(null);
+            setCurrentView('ceo-dashboard');
+            showNotification(`กำลังดูประวัติของ ${staffMember.name}`, 'success');
+        }
+    };
+
+    const handleAssignWorkToStaff = (staffId: string) => {
+        const staffMember = staff.find(s => s.id === staffId);
+        if (staffMember) {
+            // Navigate to task creation with pre-selected staff
+            setCurrentView('ceo-dashboard');
+            showNotification(`เลือก ${staffMember.name} สำหรับมอบหมายงาน - ไปที่หน้า CEO Dashboard`, 'success');
+        }
+    };
+
     // --- TASK MANAGEMENT HANDLERS ---
     const handleCreateTask = async (data: Partial<Task>) => {
         const now = new Date().toISOString();
@@ -1161,7 +1194,12 @@ const AppContent: React.FC = () => {
             case 'workplace':
                 return <StaffWorkplace currentStaffId={CURRENT_USER_ID} clients={clients} documents={documents} onReviewDoc={handleOpenReview} />;
             case 'staff':
-                return <StaffManagement staff={staff} />;
+                return <StaffManagement
+                    staff={staff}
+                    onAddStaff={handleAddStaff}
+                    onViewHistory={handleViewStaffHistory}
+                    onAssignWork={handleAssignWorkToStaff}
+                />;
             case 'documents':
                 return (
                     <div className="h-full flex flex-col">

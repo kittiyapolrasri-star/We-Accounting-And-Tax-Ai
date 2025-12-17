@@ -8,10 +8,11 @@ interface Props {
   staff: Staff[];
   onReview?: (doc: DocumentRecord) => void;
   onSelectionChange?: (selectedIds: string[]) => void;
-  onBatchApprove?: (docIds: string[]) => void; // New Prop
+  onBatchApprove?: (docIds: string[]) => void;
+  onBatchDelete?: (docIds: string[]) => void;
 }
 
-const DocumentList: React.FC<Props> = ({ documents, staff, onReview, onSelectionChange, onBatchApprove }) => {
+const DocumentList: React.FC<Props> = ({ documents, staff, onReview, onSelectionChange, onBatchApprove, onBatchDelete }) => {
   const [localDocs, setLocalDocs] = useState<DocumentRecord[]>(documents);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -135,7 +136,14 @@ const DocumentList: React.FC<Props> = ({ documents, staff, onReview, onSelection
               <FileSpreadsheet size={16} /> Export Express ({selectedIds.size})
             </button>
             <button
-              onClick={() => alert(`ยืนยันลบ ${selectedIds.size} รายการ?`)}
+              onClick={() => {
+                if (window.confirm(`ยืนยันลบ ${selectedIds.size} รายการ?`)) {
+                  if (onBatchDelete) {
+                    onBatchDelete(Array.from(selectedIds));
+                    setSelectedIds(new Set());
+                  }
+                }
+              }}
               className="px-4 py-2 bg-slate-100 text-slate-600 font-medium rounded-lg text-sm hover:bg-slate-200 transition-colors flex items-center gap-2"
             >
               <Trash2 size={16} /> ลบ

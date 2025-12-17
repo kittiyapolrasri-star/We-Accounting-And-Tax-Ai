@@ -298,6 +298,41 @@ export const updateStaff = async (staff: Staff): Promise<void> => {
     }
 };
 
+export const addStaff = async (staff: Omit<Staff, 'id'>): Promise<string> => {
+    if (IS_DEMO_MODE || !db) {
+        const data = getLocalStorage();
+        const newId = `STAFF-${Date.now()}`;
+        const newStaff = { ...staff, id: newId } as Staff;
+        data.staff.push(newStaff);
+        saveLocalStorage(data);
+        return newId;
+    }
+
+    try {
+        const docRef = await addDoc(collection(db, COLLECTIONS.STAFF), staff);
+        return docRef.id;
+    } catch (error) {
+        console.error('Error adding staff:', error);
+        throw new Error('Failed to add staff');
+    }
+};
+
+export const deleteStaff = async (staffId: string): Promise<void> => {
+    if (IS_DEMO_MODE || !db) {
+        const data = getLocalStorage();
+        data.staff = data.staff.filter(s => s.id !== staffId);
+        saveLocalStorage(data);
+        return;
+    }
+
+    try {
+        await deleteDoc(doc(db, COLLECTIONS.STAFF, staffId));
+    } catch (error) {
+        console.error('Error deleting staff:', error);
+        throw new Error('Failed to delete staff');
+    }
+};
+
 // --- GL ENTRIES ---
 export const getGLEntries = async (limitCount?: number): Promise<PostedGLEntry[]> => {
     return fetchCollection<PostedGLEntry>(
@@ -706,6 +741,8 @@ export const databaseService = {
     getStaff,
     getStaffById,
     updateStaff,
+    addStaff,
+    deleteStaff,
 
     // GL Entries
     getGLEntries,

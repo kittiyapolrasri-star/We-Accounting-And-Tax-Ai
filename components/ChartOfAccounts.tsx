@@ -1,11 +1,128 @@
 import React, { useState } from 'react';
 import { THAI_GL_CODES } from '../constants';
-import { Folder, FolderOpen, Plus, Search, Edit2, MoreHorizontal, CheckCircle2 } from 'lucide-react';
+import { Folder, FolderOpen, Plus, Search, Edit2, MoreHorizontal, CheckCircle2, X, Save, Loader2 } from 'lucide-react';
+
+interface Account {
+    code: string;
+    name: string;
+}
+
+interface AddEditModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (account: Account) => void;
+    editingAccount?: Account | null;
+}
+
+const AddEditAccountModal: React.FC<AddEditModalProps> = ({ isOpen, onClose, onSave, editingAccount }) => {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        code: editingAccount?.code || '',
+        name: editingAccount?.name || ''
+    });
+
+    React.useEffect(() => {
+        if (editingAccount) {
+            setFormData({ code: editingAccount.code, name: editingAccount.name });
+        } else {
+            setFormData({ code: '', name: '' });
+        }
+    }, [editingAccount]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.code || !formData.name) return;
+
+        setLoading(true);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 500)); // Simulate save
+            onSave(formData);
+            onClose();
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                            <FolderOpen size={20} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-800">{editingAccount ? 'แก้ไขบัญชี' : 'เพิ่มบัญชีใหม่'}</h3>
+                            <p className="text-xs text-slate-500">กรอกรายละเอียดบัญชีแยกประเภท</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            รหัสบัญชี <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.code}
+                            onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value }))}
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                            placeholder="เช่น 11100"
+                            required
+                            disabled={!!editingAccount}
+                        />
+                        <p className="text-xs text-slate-400 mt-1">รหัส 5 หลัก: 1=สินทรัพย์, 2=หนี้สิน, 3=ทุน, 4=รายได้, 5=ค่าใช้จ่าย</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                            ชื่อบัญชี <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                            placeholder="เช่น เงินสด / Cash"
+                            required
+                        />
+                    </div>
+
+                    <div className="pt-4 flex items-center justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-medium rounded-lg transition-colors"
+                        >
+                            ยกเลิก
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm shadow-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                            {loading ? 'กำลังบันทึก...' : 'บันทึก'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
 
 const ChartOfAccounts: React.FC = () => {
     const [accounts, setAccounts] = useState(THAI_GL_CODES);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeCategory, setActiveCategory] = useState<string>('all');
+    const [showModal, setShowModal] = useState(false);
+    const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
     const categories = [
         { id: '1', label: 'สินทรัพย์ (Assets)', color: 'text-emerald-600 bg-emerald-50' },
@@ -21,6 +138,28 @@ const ChartOfAccounts: React.FC = () => {
         return matchesSearch && matchesCategory;
     });
 
+    const handleAddAccount = () => {
+        setEditingAccount(null);
+        setShowModal(true);
+    };
+
+    const handleEditAccount = (account: Account) => {
+        setEditingAccount(account);
+        setShowModal(true);
+    };
+
+    const handleSaveAccount = (account: Account) => {
+        if (editingAccount) {
+            // Update existing
+            setAccounts(prev => prev.map(acc => acc.code === account.code ? account : acc));
+        } else {
+            // Add new
+            setAccounts(prev => [...prev, account]);
+        }
+        setShowModal(false);
+        setEditingAccount(null);
+    };
+
     return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full animate-in fade-in duration-500">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -32,7 +171,7 @@ const ChartOfAccounts: React.FC = () => {
                     <p className="text-sm text-slate-500">จัดการโครงสร้างบัญชีแยกประเภทมาตรฐาน TAS</p>
                 </div>
                 <button
-                    onClick={() => alert('ฟังก์ชันเพิ่มบัญชีใหม่กำลังพัฒนา')}
+                    onClick={handleAddAccount}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
                 >
                     <Plus size={16} /> เพิ่มบัญชีใหม่
@@ -45,14 +184,13 @@ const ChartOfAccounts: React.FC = () => {
                         onClick={() => setActiveCategory('all')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${activeCategory === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                     >
-                        ทั้งหมด
+                        ทั้งหมด ({accounts.length})
                     </button>
                     {categories.map(cat => (
                         <button
                             key={cat.id}
                             onClick={() => setActiveCategory(cat.id)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${activeCategory === cat.id ? cat.color.replace('bg-', 'bg-opacity-100 text-white bg-') : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}
-                            // Simplified active style for demo, real implementation would handle dynamic class names better or use style prop
                             style={activeCategory === cat.id ? { backgroundColor: cat.id === '1' ? '#059669' : cat.id === '2' ? '#d97706' : cat.id === '3' ? '#7c3aed' : cat.id === '4' ? '#2563eb' : '#dc2626', color: 'white' } : {}}
                         >
                             {cat.label}
@@ -102,8 +240,9 @@ const ChartOfAccounts: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-3 text-right">
                                         <button
-                                            onClick={() => alert(`แก้ไขบัญชี ${acc.code}: ${acc.name}`)}
+                                            onClick={() => handleEditAccount(acc)}
                                             className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                            title="แก้ไขบัญชี"
                                         >
                                             <Edit2 size={14} />
                                         </button>
@@ -114,6 +253,14 @@ const ChartOfAccounts: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Add/Edit Modal */}
+            <AddEditAccountModal
+                isOpen={showModal}
+                onClose={() => { setShowModal(false); setEditingAccount(null); }}
+                onSave={handleSaveAccount}
+                editingAccount={editingAccount}
+            />
         </div>
     );
 };
