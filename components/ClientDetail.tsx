@@ -530,7 +530,7 @@ const ClientDetail: React.FC<Props> = ({ client, documents, staff, vendorRules, 
                                             <p className="text-xs text-slate-400">ใช้ผังบัญชีมาตรฐาน NPAEs</p>
                                         </div>
                                         <button
-                                            onClick={() => alert('ฟังก์ชันแก้ไขผังบัญชีกำลังพัฒนา')}
+                                            onClick={() => setActiveTab('coa')}
                                             className="text-blue-600 text-xs font-bold hover:underline"
                                         >แก้ไข</button>
                                     </div>

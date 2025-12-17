@@ -29,7 +29,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
         const glInputVat = glEntries
             .filter(e => e.account_code === '11540') // Input VAT
             .reduce((sum, e) => sum + (e.debit - e.credit), 0);
-        
+
         const docInputVat = documents
             .filter(d => d.status === 'approved' && d.ai_data?.tax_compliance.is_full_tax_invoice && d.ai_data.tax_compliance.vat_claimable)
             .reduce((sum, d) => sum + (d.ai_data?.financials.vat_amount || 0), 0);
@@ -40,7 +40,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
         const glAssets = glEntries
             .filter(e => e.account_code.startsWith('12') && !e.account_code.endsWith('01')) // Asset Cost accounts (excluding accum depre)
             .reduce((sum, e) => sum + (e.debit - e.credit), 0);
-        
+
         const regAssets = assets.reduce((sum, a) => sum + a.cost, 0);
         const assetDiff = Math.abs(glAssets - regAssets);
 
@@ -57,11 +57,11 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
     // --- CLOSING PREVIEW ENGINE (Enhanced with CIT) ---
     const closingPreview = useMemo(() => {
         // Calculate P&L Balances to Clear
-        const closingLines: {code: string, name: string, balance: number, side: 'DEBIT'|'CREDIT'}[] = [];
-        
+        const closingLines: { code: string, name: string, balance: number, side: 'DEBIT' | 'CREDIT' }[] = [];
+
         // Sum by Account Code for Revenue (4) & Expense (5)
-        const accountBalances: {[code: string]: {name: string, balance: number}} = {};
-        
+        const accountBalances: { [code: string]: { name: string, balance: number } } = {};
+
         glEntries.forEach(entry => {
             if (entry.account_code.startsWith('4') || entry.account_code.startsWith('5')) {
                 if (!accountBalances[entry.account_code]) {
@@ -135,10 +135,10 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
 
         const closingDate = new Date().toISOString().split('T')[0];
         const generatedEntries: PostedGLEntry[] = [];
-        
+
         // 1. Post Corporate Income Tax (CIT) Accrual
         if (closingPreview.citAmount > 0) {
-             generatedEntries.push({
+            generatedEntries.push({
                 id: `CIT-EXP-${Date.now()}`,
                 clientId,
                 date: closingDate,
@@ -182,7 +182,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
 
         // Close CIT Expense manually since it wasn't in 'lines' yet
         if (closingPreview.citAmount > 0) {
-             generatedEntries.push({
+            generatedEntries.push({
                 id: `CLOSE-CIT-${Date.now()}`,
                 clientId,
                 date: closingDate,
@@ -217,7 +217,40 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
     };
 
     const handleDownloadPackage = () => {
-        alert("Downloading Full Year-End Package (TB, GL, Notes, Tax Summary) as ZIP...");
+        // Create comprehensive year-end package data
+        const packageData = {
+            generatedAt: new Date().toISOString(),
+            clientId: clientId,
+            trialBalance: glEntries.reduce((acc, entry) => {
+                if (!acc[entry.account_code]) {
+                    acc[entry.account_code] = { name: entry.account_name, debit: 0, credit: 0 };
+                }
+                acc[entry.account_code].debit += entry.debit;
+                acc[entry.account_code].credit += entry.credit;
+                return acc;
+            }, {} as Record<string, { name: string, debit: number, credit: number }>),
+            generalLedger: glEntries,
+            fixedAssets: assets,
+            documents: documents.filter(d => d.status === 'approved').map(d => ({
+                id: d.id,
+                filename: d.filename,
+                amount: d.amount,
+                uploadedAt: d.uploaded_at
+            })),
+            closingPreview: closingPreview,
+            reconciliation: reconciliation
+        };
+
+        // Create and download JSON file
+        const blob = new Blob([JSON.stringify(packageData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `year-end-package-${clientId}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     if (isLocked) {
@@ -241,7 +274,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-full animate-in fade-in duration-500">
             {/* Left: AI Auditor */}
             <div className="lg:col-span-2 space-y-6">
-                
+
                 {/* 1. Reconciliation Dashboard */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
                     <div className="flex justify-between items-start mb-6">
@@ -253,18 +286,18 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
                             <p className="text-sm text-slate-500">ระบบตรวจสอบยันยอดบัญชี (Cross-Module Reconciliation)</p>
                         </div>
                         {scanStatus === 'complete' && (
-                             <div className={`flex flex-col items-end`}>
-                                 <span className={`text-3xl font-bold ${auditScore >= 90 ? 'text-emerald-600' : 'text-amber-500'}`}>{auditScore}%</span>
-                                 <span className="text-xs font-bold text-slate-400 uppercase">Health Score</span>
-                             </div>
+                            <div className={`flex flex-col items-end`}>
+                                <span className={`text-3xl font-bold ${auditScore >= 90 ? 'text-emerald-600' : 'text-amber-500'}`}>{auditScore}%</span>
+                                <span className="text-xs font-bold text-slate-400 uppercase">Health Score</span>
+                            </div>
                         )}
                     </div>
 
                     {scanStatus === 'idle' && (
                         <div className="text-center py-10 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-                             <ShieldCheck size={48} className="mx-auto text-slate-300 mb-4" />
-                             <p className="text-slate-500 mb-4">พร้อมเริ่มการตรวจสอบ: GL vs Tax vs Assets vs Bank</p>
-                             <button 
+                            <ShieldCheck size={48} className="mx-auto text-slate-300 mb-4" />
+                            <p className="text-slate-500 mb-4">พร้อมเริ่มการตรวจสอบ: GL vs Tax vs Assets vs Bank</p>
+                            <button
                                 onClick={runScan}
                                 className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 mx-auto shadow-lg shadow-indigo-200"
                             >
@@ -283,7 +316,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
 
                     {scanStatus === 'complete' && (
                         <div className="space-y-6 animate-in slide-in-from-bottom-4">
-                            
+
                             {/* Reconciliation Cards */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className={`p-4 rounded-xl border ${reconciliation.vat.status === 'pass' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
@@ -331,9 +364,8 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
                                 </div>
                                 {anomalies.map((issue: any) => (
                                     <div key={issue.id} className="flex items-start gap-3 p-4 bg-white border border-slate-100 rounded-lg shadow-sm hover:border-indigo-200 transition-colors group">
-                                        <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
-                                            issue.severity === 'high' ? 'bg-red-500' : issue.severity === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                                        }`}></div>
+                                        <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${issue.severity === 'high' ? 'bg-red-500' : issue.severity === 'medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                                            }`}></div>
                                         <div className="flex-1">
                                             <h4 className="text-sm font-bold text-slate-800">{issue.title}</h4>
                                             <p className="text-xs text-slate-500 mt-0.5">{issue.desc}</p>
@@ -351,17 +383,17 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-full overflow-hidden">
                 <div className="p-6 border-b border-slate-100 bg-slate-800 text-white rounded-t-xl">
                     <h3 className="font-bold text-lg flex items-center gap-2">
-                        <Lock size={18} className="text-blue-400"/> Period Closing
+                        <Lock size={18} className="text-blue-400" /> Period Closing
                     </h3>
                     <p className="text-blue-200 text-xs mt-1">ปิดงวดบัญชี ประจำปี 2024</p>
                 </div>
                 <div className="p-6 flex-1 overflow-auto">
-                    
+
                     {/* Closing Preview Section */}
                     {scanStatus === 'complete' && (
                         <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
                             <h4 className="text-xs font-bold text-slate-600 uppercase mb-3 flex items-center gap-2">
-                                <Calculator size={14}/> Auto-Calculation & Closing
+                                <Calculator size={14} /> Auto-Calculation & Closing
                             </h4>
                             <div className="space-y-2 text-xs font-medium">
                                 <div className="flex justify-between text-slate-600">
@@ -369,7 +401,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
                                     <span>{closingPreview.profitBeforeTax.toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between text-red-600">
-                                    <span className="flex items-center gap-1"><Coins size={10}/> หัก: ภาษีเงินได้ (CIT 20%)</span>
+                                    <span className="flex items-center gap-1"><Coins size={10} /> หัก: ภาษีเงินได้ (CIT 20%)</span>
                                     <span>({closingPreview.citAmount.toLocaleString()})</span>
                                 </div>
                                 <div className="border-t border-slate-200 my-1 pt-1"></div>
@@ -384,7 +416,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
 
                     <div className="space-y-4">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Checklist ก่อนปิดงบ</p>
-                        
+
                         <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checklist.docsReviewed ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
                             <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.docsReviewed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
                                 {checklist.docsReviewed && <CheckCircle2 size={14} />}
@@ -394,15 +426,15 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
                         </label>
 
                         <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checklist.bankRecon ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                             <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.bankRecon ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.bankRecon ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
                                 {checklist.bankRecon && <CheckCircle2 size={14} />}
                             </div>
                             <input type="checkbox" className="hidden" checked={checklist.bankRecon} onChange={() => toggleCheck('bankRecon')} />
                             <span className={`text-sm font-medium ${checklist.bankRecon ? 'text-emerald-900' : 'text-slate-600'}`}>กระทบยอดธนาคารแล้ว</span>
                         </label>
 
-                         <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checklist.vatFiled ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                             <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.vatFiled ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
+                        <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checklist.vatFiled ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.vatFiled ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
                                 {checklist.vatFiled && <CheckCircle2 size={14} />}
                             </div>
                             <input type="checkbox" className="hidden" checked={checklist.vatFiled} onChange={() => toggleCheck('vatFiled')} />
@@ -410,7 +442,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
                         </label>
 
                         <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checklist.assetsDepre ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                             <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.assetsDepre ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.assetsDepre ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
                                 {checklist.assetsDepre && <CheckCircle2 size={14} />}
                             </div>
                             <input type="checkbox" className="hidden" checked={checklist.assetsDepre} onChange={() => toggleCheck('assetsDepre')} />
@@ -418,7 +450,7 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
                         </label>
 
                         <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${checklist.citCalculated ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                             <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.citCalculated ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${checklist.citCalculated ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
                                 {checklist.citCalculated && <CheckCircle2 size={14} />}
                             </div>
                             <input type="checkbox" className="hidden" checked={checklist.citCalculated} onChange={() => toggleCheck('citCalculated')} />
@@ -427,20 +459,19 @@ const AuditClosing: React.FC<Props> = ({ documents, glEntries, assets, clientId,
                     </div>
                 </div>
                 <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-xl">
-                    <button 
+                    <button
                         onClick={handleConfirmClosing}
                         disabled={!allChecked}
-                        className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all ${
-                            allChecked 
-                            ? 'bg-slate-800 text-white hover:bg-slate-900 shadow-slate-200' 
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                        }`}
+                        className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all ${allChecked
+                                ? 'bg-slate-800 text-white hover:bg-slate-900 shadow-slate-200'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
                     >
                         <Lock size={18} /> Confirm & Lock Period
                     </button>
                     {!allChecked && (
                         <p className="text-xs text-center text-red-500 mt-2 flex items-center justify-center gap-1">
-                            {auditScore < 90 ? <AlertTriangle size={12}/> : <AlertCircle size={12}/>} 
+                            {auditScore < 90 ? <AlertTriangle size={12} /> : <AlertCircle size={12} />}
                             {auditScore < 90 ? 'คะแนน Audit ต่ำกว่าเกณฑ์' : 'กรุณาดำเนินการให้ครบทุกขั้นตอน'}
                         </p>
                     )}

@@ -175,7 +175,7 @@ const StaffManagement: React.FC<Props> = ({ staff, onAddStaff, onAssignWork, onV
     if (onAddStaff) {
       await onAddStaff(data);
     } else {
-      alert('ฟังก์ชันเพิ่มพนักงานกำลังพัฒนา');
+      console.log('Add staff handler not provided, data:', data);
     }
     setShowAddModal(false);
   };
@@ -184,7 +184,7 @@ const StaffManagement: React.FC<Props> = ({ staff, onAddStaff, onAssignWork, onV
     if (onViewHistory) {
       onViewHistory(staffId);
     } else {
-      alert('ฟังก์ชันดูประวัติกำลังพัฒนา');
+      console.log('View history handler not provided for staff:', staffId);
     }
   };
 
@@ -192,7 +192,7 @@ const StaffManagement: React.FC<Props> = ({ staff, onAddStaff, onAssignWork, onV
     if (onAssignWork) {
       onAssignWork(staffId);
     } else {
-      alert('ฟังก์ชันมอบหมายงานกำลังพัฒนา');
+      console.log('Assign work handler not provided for staff:', staffId);
     }
   };
 
