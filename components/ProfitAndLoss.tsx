@@ -1,13 +1,16 @@
 import React, { useMemo } from 'react';
 import { PostedGLEntry } from '../types';
 import { ArrowDown, ArrowUp, Download, PieChart, TrendingUp, TrendingDown, ChevronRight } from 'lucide-react';
+import { downloadProfitLossPDF, ProfitLossData } from '../services/pdfService';
 
 interface Props {
     entries: PostedGLEntry[];
     onDrillDown: (accountCode: string) => void;
+    clientName?: string;
+    clientTaxId?: string;
 }
 
-const ProfitAndLoss: React.FC<Props> = ({ entries, onDrillDown }) => {
+const ProfitAndLoss: React.FC<Props> = ({ entries, onDrillDown, clientName = 'Company Name', clientTaxId = '0000000000000' }) => {
     const plData = useMemo(() => {
         // Helper to sum by prefix
         const sumByPrefix = (prefix: string) => {
@@ -73,10 +76,23 @@ const ProfitAndLoss: React.FC<Props> = ({ entries, onDrillDown }) => {
                 </div>
                 <div className="flex gap-2">
                     <button
-                        onClick={() => window.print()}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-100 transition-colors shadow-sm text-slate-600"
+                        onClick={() => {
+                            const pdfData: ProfitLossData = {
+                                companyInfo: {
+                                    name: clientName,
+                                    taxId: clientTaxId
+                                },
+                                periodStart: new Date(new Date().getFullYear(), 0, 1).toLocaleDateString('th-TH'),
+                                periodEnd: new Date().toLocaleDateString('th-TH'),
+                                revenue: plData.revenueBreakdown.map(r => ({ name: r.name, amount: r.amount })),
+                                costOfSales: plData.costBreakdown.map(c => ({ name: c.name, amount: c.amount })),
+                                operatingExpenses: plData.adminBreakdown.map(a => ({ name: a.name, amount: a.amount }))
+                            };
+                            downloadProfitLossPDF(pdfData);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
                     >
-                        <Download size={16} /> PDF
+                        <Download size={16} /> Export PDF
                     </button>
                 </div>
             </div>

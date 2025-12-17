@@ -10,6 +10,7 @@ import {
   formatThaiCurrency, PIT_BRACKETS, TAX_DEDUCTIONS, SSO_RATES
 } from '../services/payroll';
 import { PostedGLEntry, Client } from '../types';
+import { PremiumPDFGenerator, CompanyInfo } from '../services/pdfService';
 
 interface Props {
   clients: Client[];
@@ -811,11 +812,63 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                         {/* Actions */}
                         <div className="mt-4 pt-4 border-t border-slate-200 flex gap-2">
                           <button
+                            onClick={() => {
+                              // Find employee
+                              const emp = employees.find(e => e.id === ps.employeeId);
+                              if (!emp) return;
+
+                              // Find client
+                              const client = clients.find(c => c.id === selectedClientId);
+
+                              // Generate PDF pay slip
+                              const generator = new PremiumPDFGenerator();
+                              const companyInfo: CompanyInfo = {
+                                name: client?.name || 'Company',
+                                taxId: client?.tax_id || '0000000000000'
+                              };
+
+                              const blob = generator.generatePaySlip({
+                                name: `${emp.titleTh}${emp.firstNameTh} ${emp.lastNameTh}`,
+                                position: emp.position,
+                                department: emp.department || '-',
+                                employeeId: emp.employeeCode,
+                                period: `${new Date().toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}`,
+                                earnings: [
+                                  { name: 'เงินเดือน', amount: ps.earnings.baseSalary || 0 },
+                                  { name: 'ค่าตำแหน่ง', amount: ps.earnings.positionAllowance || 0 },
+                                  { name: 'ค่าที่พัก', amount: ps.earnings.housingAllowance || 0 },
+                                  { name: 'ค่าเดินทาง', amount: ps.earnings.transportAllowance || 0 },
+                                  { name: 'โอที', amount: ps.earnings.overtime || 0 },
+                                  { name: 'โบนัส', amount: ps.earnings.bonus || 0 },
+                                  { name: 'ค่าคอมมิชชั่น', amount: ps.earnings.commission || 0 }
+                                ].filter(e => e.amount > 0),
+                                deductions: [
+                                  { name: 'ประกันสังคม', amount: ps.deductions.sso },
+                                  { name: 'กองทุนสำรองเลี้ยงชีพ', amount: ps.deductions.providentFund || 0 },
+                                  { name: 'ภาษีหัก ณ ที่จ่าย', amount: ps.wht }
+                                ].filter(d => d.amount > 0),
+                                bankAccount: emp.bankAccount || undefined
+                              }, companyInfo);
+
+                              // Download
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `PaySlip_${emp.employeeCode}_${new Date().toISOString().slice(0, 7)}.pdf`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            <Download size={16} />
+                            Export PDF
+                          </button>
+                          <button
                             onClick={() => window.print()}
                             className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors"
                           >
                             <Printer size={16} />
-                            พิมพ์สลิป
+                            Print
                           </button>
                           <button
                             onClick={() => {
