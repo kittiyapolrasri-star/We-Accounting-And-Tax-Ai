@@ -51,6 +51,8 @@ import SalesDataImport from './components/SalesDataImport';
 import SimpleAddClientModal from './components/SimpleAddClientModal';
 import EditClientModal from './components/EditClientModal';
 import DocumentUploadModal, { UploadContext } from './components/DocumentUploadModal';
+import DataImportWizard from './components/DataImportWizard';
+import { ImportDataType } from './services/DataImportService';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
@@ -102,6 +104,7 @@ const AppContent: React.FC = () => {
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
     const [uploadContext, setUploadContext] = useState<UploadContext | null>(null);
+    const [showDataImportWizard, setShowDataImportWizard] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Get current user info from auth context
@@ -1028,6 +1031,151 @@ const AppContent: React.FC = () => {
         fileInputRef.current?.click();
     };
 
+    // Handler for Data Import Wizard completion
+    const handleDataImportComplete = async (type: ImportDataType, data: any[]) => {
+        try {
+            switch (type) {
+                case 'clients':
+                    // Import clients
+                    for (const clientData of data) {
+                        const newClient = {
+                            name: clientData.name,
+                            tax_id: clientData.tax_id,
+                            industry: clientData.industry || 'General',
+                            status: clientData.status || 'Active',
+                            contact_person: clientData.contact_person || '',
+                            contact_email: clientData.contact_email,
+                            contact_phone: clientData.contact_phone,
+                            address: clientData.address,
+                            assigned_staff_id: '',
+                            last_closing_date: new Date().toISOString().split('T')[0]
+                        };
+                        await handleCreateClient(newClient as any);
+                    }
+                    showNotification(`✅ นำเข้าบริษัท ${data.length} รายการสำเร็จ`);
+                    break;
+
+                case 'staff':
+                    // Import staff
+                    for (const staffData of data) {
+                        const newStaff: Omit<Staff, 'id'> = {
+                            name: staffData.name,
+                            email: staffData.email,
+                            role: staffData.role || 'Junior Accountant',
+                            status: staffData.status || 'active',
+                            phone: staffData.phone,
+                            department: staffData.department,
+                            active_tasks: 0
+                        };
+                        await handleAddStaff(newStaff as any);
+                    }
+                    showNotification(`✅ นำเข้าพนักงาน ${data.length} รายการสำเร็จ`);
+                    break;
+
+                case 'opening_balance':
+                case 'journal_entries':
+                    // Import as GL entries
+                    const currentClient = selectedClientId
+                        ? clients.find(c => c.id === selectedClientId)
+                        : clients[0];
+
+                    if (!currentClient) {
+                        showNotification('กรุณาเลือกบริษัทก่อนนำเข้ายอดยกมา', 'error');
+                        return;
+                    }
+
+                    const newEntries: PostedGLEntry[] = data.map((row, idx) => ({
+                        id: `GL-IMP-${Date.now()}-${idx}`,
+                        clientId: currentClient.id,
+                        date: row.date || new Date().toISOString().split('T')[0],
+                        doc_no: row.doc_no || `OB-${Date.now()}`,
+                        description: type === 'opening_balance' ? 'ยอดยกมา (Opening Balance)' : row.description || '',
+                        account_code: row.account_code,
+                        account_name: row.account_name,
+                        department_code: row.department_code,
+                        debit: parseFloat(row.debit) || 0,
+                        credit: parseFloat(row.credit) || 0,
+                        system_generated: type === 'opening_balance'
+                    }));
+
+                    await handlePostJournalEntry(newEntries);
+                    showNotification(`✅ นำเข้า${type === 'opening_balance' ? 'ยอดยกมา' : 'รายการบัญชี'} ${data.length} รายการสำเร็จ`);
+                    break;
+
+                case 'fixed_assets':
+                    // Import fixed assets
+                    const assetClient = selectedClientId
+                        ? clients.find(c => c.id === selectedClientId)
+                        : clients[0];
+
+                    if (!assetClient) {
+                        showNotification('กรุณาเลือกบริษัทก่อนนำเข้าทรัพย์สิน', 'error');
+                        return;
+                    }
+
+                    const newAssets: FixedAsset[] = data.map((row, idx) => ({
+                        id: `FA-IMP-${Date.now()}-${idx}`,
+                        clientId: assetClient.id,
+                        asset_code: row.asset_code,
+                        name: row.name,
+                        category: row.category || 'Equipment',
+                        acquisition_date: row.acquisition_date,
+                        cost: parseFloat(row.cost) || 0,
+                        residual_value: parseFloat(row.residual_value) || 1,
+                        useful_life_years: parseInt(row.useful_life_years) || 5,
+                        accumulated_depreciation_bf: parseFloat(row.accumulated_depreciation_bf) || 0,
+                        current_month_depreciation: 0
+                    }));
+
+                    setFixedAssets(prev => [...prev, ...newAssets]);
+                    for (const asset of newAssets) {
+                        await databaseService.addAsset(asset);
+                    }
+                    showNotification(`✅ นำเข้าทรัพย์สินถาวร ${data.length} รายการสำเร็จ`);
+                    break;
+
+                case 'vendors':
+                    // Import vendor rules
+                    const vendorClient = selectedClientId
+                        ? clients.find(c => c.id === selectedClientId)
+                        : clients[0];
+
+                    const newRules: VendorRule[] = data.map((row, idx) => ({
+                        id: `VR-IMP-${Date.now()}-${idx}`,
+                        clientId: vendorClient?.id,
+                        vendorNameKeyword: row.name,
+                        accountCode: row.default_account || '52100',
+                        accountName: 'ค่าใช้จ่าย',
+                        vatType: 'CLAIMABLE' as const,
+                        whtRate: parseFloat(row.wht_rate) || 0,
+                        description: `${row.name} - ${row.tax_id || ''}`,
+                        isActive: true,
+                        createdAt: new Date().toISOString()
+                    }));
+
+                    setVendorRules(prev => [...prev, ...newRules]);
+                    for (const rule of newRules) {
+                        await databaseService.addRule(rule);
+                    }
+                    showNotification(`✅ นำเข้าคู่ค้า ${data.length} รายการสำเร็จ`);
+                    break;
+
+                case 'chart_of_accounts':
+                    // Chart of accounts is stored in constants, show info
+                    showNotification(`ผังบัญชี ${data.length} รายการ พร้อมใช้งาน (ระบบใช้ผังบัญชีมาตรฐาน)`, 'warning');
+                    break;
+
+                default:
+                    showNotification(`นำเข้าข้อมูลประเภท ${type} สำเร็จ`);
+            }
+
+            await logAction('IMPORT', `Imported ${data.length} ${type} records`);
+        } catch (error: any) {
+            console.error('Import error:', error);
+            showNotification(`เกิดข้อผิดพลาดในการนำเข้า: ${error.message}`, 'error');
+        }
+    };
+
     const handleCancelEntry = () => {
         setReviewDocId(null);
     };
@@ -1552,6 +1700,11 @@ const AppContent: React.FC = () => {
                         showNotification(`บันทึกบัญชี ${entries.length} รายการสำเร็จ`, 'success');
                     }}
                 />;
+            case 'data-import':
+                // Open DataImportWizard modal
+                setShowDataImportWizard(true);
+                setCurrentView('smart-dashboard'); // Redirect to dashboard while modal is open
+                return null;
             case 'tax-calendar':
                 return <TaxCalendar
                     clients={clients}
@@ -1718,6 +1871,15 @@ const AppContent: React.FC = () => {
                 onConfirm={handleUploadConfirm}
                 clients={clients}
                 selectedClientId={selectedClientId || undefined}
+            />
+
+            {/* Data Import Wizard - All data types */}
+            <DataImportWizard
+                isOpen={showDataImportWizard}
+                onClose={() => setShowDataImportWizard(false)}
+                onImportComplete={handleDataImportComplete}
+                clientId={selectedClientId || undefined}
+                clientName={selectedClientId ? clients.find(c => c.id === selectedClientId)?.name : undefined}
             />
         </div>
     );

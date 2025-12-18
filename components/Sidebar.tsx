@@ -91,7 +91,8 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
       items: [
         { id: 'clients', label: 'ทะเบียนลูกค้า', icon: Building },
         { id: 'master-data', label: 'ข้อมูลหลัก', icon: Database },
-        { id: 'sales-import', label: 'นำเข้ายอดขาย', icon: FileSpreadsheet, badge: 'NEW' },
+        { id: 'data-import', label: 'นำเข้าข้อมูล (Wizard)', icon: FileSpreadsheet, badge: 'PRO' },
+        { id: 'sales-import', label: 'นำเข้ายอดขาย', icon: FileSpreadsheet },
         { id: 'ecommerce-sync', label: 'เชื่อม E-Commerce', icon: ShoppingCart },
       ]
     },
