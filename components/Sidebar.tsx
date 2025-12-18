@@ -131,6 +131,17 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
         { id: 'ai-agents', label: 'AI Agents', icon: Bot, badge: 'BETA' },
       ]
     },
+    {
+      id: 'settings',
+      label: 'ตั้งค่าระบบ',
+      icon: Settings,
+      items: [
+        { id: 'system-settings', label: 'ตั้งค่าทั่วไป', icon: Settings },
+        { id: 'company-profile', label: 'ข้อมูลสำนักงาน', icon: Building },
+        { id: 'chart-of-accounts', label: 'ผังบัญชีมาตรฐาน', icon: FileText },
+        { id: 'backup-restore', label: 'สำรอง & กู้คืน', icon: Database },
+      ]
+    },
   ];
 
   // Filter menu groups based on role

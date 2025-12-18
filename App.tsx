@@ -53,6 +53,7 @@ import EditClientModal from './components/EditClientModal';
 import DocumentUploadModal, { UploadContext } from './components/DocumentUploadModal';
 import DataImportWizard, { ImportContext } from './components/DataImportWizard';
 import { ImportDataType } from './services/DataImportService';
+import SystemSettings from './components/SystemSettings';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
@@ -1725,6 +1726,13 @@ const AppContent: React.FC = () => {
                     glEntries={glEntries}
                     onPostJournal={handlePostJournalEntry}
                     onPublishReport={handlePublishReport}
+                />;
+            case 'system-settings':
+            case 'company-profile':
+            case 'chart-of-accounts':
+            case 'backup-restore':
+                return <SystemSettings
+                    onSave={(settings) => showNotification('บันทึกการตั้งค่าสำเร็จ', 'success')}
                 />;
             default:
                 return <Dashboard documents={documents} staff={staff} clients={clients} />;
