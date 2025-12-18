@@ -51,7 +51,7 @@ import SalesDataImport from './components/SalesDataImport';
 import SimpleAddClientModal from './components/SimpleAddClientModal';
 import EditClientModal from './components/EditClientModal';
 import DocumentUploadModal, { UploadContext } from './components/DocumentUploadModal';
-import DataImportWizard from './components/DataImportWizard';
+import DataImportWizard, { ImportContext } from './components/DataImportWizard';
 import { ImportDataType } from './services/DataImportService';
 
 // AI Agents Hook
@@ -1032,7 +1032,7 @@ const AppContent: React.FC = () => {
     };
 
     // Handler for Data Import Wizard completion
-    const handleDataImportComplete = async (type: ImportDataType, data: any[]) => {
+    const handleDataImportComplete = async (type: ImportDataType, data: any[], context: ImportContext) => {
         try {
             switch (type) {
                 case 'clients':
@@ -1074,20 +1074,16 @@ const AppContent: React.FC = () => {
 
                 case 'opening_balance':
                 case 'journal_entries':
-                    // Import as GL entries
-                    const currentClient = selectedClientId
-                        ? clients.find(c => c.id === selectedClientId)
-                        : clients[0];
-
-                    if (!currentClient) {
+                    // Use context from wizard (has clientId and date)
+                    if (!context.clientId) {
                         showNotification('กรุณาเลือกบริษัทก่อนนำเข้ายอดยกมา', 'error');
                         return;
                     }
 
                     const newEntries: PostedGLEntry[] = data.map((row, idx) => ({
                         id: `GL-IMP-${Date.now()}-${idx}`,
-                        clientId: currentClient.id,
-                        date: row.date || new Date().toISOString().split('T')[0],
+                        clientId: context.clientId,
+                        date: context.date || row.date || new Date().toISOString().split('T')[0],
                         doc_no: row.doc_no || `OB-${Date.now()}`,
                         description: type === 'opening_balance' ? 'ยอดยกมา (Opening Balance)' : row.description || '',
                         account_code: row.account_code,
@@ -1099,23 +1095,19 @@ const AppContent: React.FC = () => {
                     }));
 
                     await handlePostJournalEntry(newEntries);
-                    showNotification(`✅ นำเข้า${type === 'opening_balance' ? 'ยอดยกมา' : 'รายการบัญชี'} ${data.length} รายการสำเร็จ`);
+                    showNotification(`✅ นำเข้า${type === 'opening_balance' ? 'ยอดยกมา' : 'รายการบัญชี'} ${data.length} รายการ สำหรับ "${context.clientName}" สำเร็จ`);
                     break;
 
                 case 'fixed_assets':
-                    // Import fixed assets
-                    const assetClient = selectedClientId
-                        ? clients.find(c => c.id === selectedClientId)
-                        : clients[0];
-
-                    if (!assetClient) {
+                    // Use context from wizard
+                    if (!context.clientId) {
                         showNotification('กรุณาเลือกบริษัทก่อนนำเข้าทรัพย์สิน', 'error');
                         return;
                     }
 
                     const newAssets: FixedAsset[] = data.map((row, idx) => ({
                         id: `FA-IMP-${Date.now()}-${idx}`,
-                        clientId: assetClient.id,
+                        clientId: context.clientId,
                         asset_code: row.asset_code,
                         name: row.name,
                         category: row.category || 'Equipment',
@@ -1131,18 +1123,14 @@ const AppContent: React.FC = () => {
                     for (const asset of newAssets) {
                         await databaseService.addAsset(asset);
                     }
-                    showNotification(`✅ นำเข้าทรัพย์สินถาวร ${data.length} รายการสำเร็จ`);
+                    showNotification(`✅ นำเข้าทรัพย์สินถาวร ${data.length} รายการ สำหรับ "${context.clientName}" สำเร็จ`);
                     break;
 
                 case 'vendors':
-                    // Import vendor rules
-                    const vendorClient = selectedClientId
-                        ? clients.find(c => c.id === selectedClientId)
-                        : clients[0];
-
+                    // Use context from wizard
                     const newRules: VendorRule[] = data.map((row, idx) => ({
                         id: `VR-IMP-${Date.now()}-${idx}`,
-                        clientId: vendorClient?.id,
+                        clientId: context.clientId || undefined,
                         vendorNameKeyword: row.name,
                         accountCode: row.default_account || '52100',
                         accountName: 'ค่าใช้จ่าย',
@@ -1169,7 +1157,7 @@ const AppContent: React.FC = () => {
                     showNotification(`นำเข้าข้อมูลประเภท ${type} สำเร็จ`);
             }
 
-            await logAction('IMPORT', `Imported ${data.length} ${type} records`);
+            await logAction('IMPORT', `Imported ${data.length} ${type} records for ${context.clientName || 'global'}`);
         } catch (error: any) {
             console.error('Import error:', error);
             showNotification(`เกิดข้อผิดพลาดในการนำเข้า: ${error.message}`, 'error');
@@ -1878,8 +1866,8 @@ const AppContent: React.FC = () => {
                 isOpen={showDataImportWizard}
                 onClose={() => setShowDataImportWizard(false)}
                 onImportComplete={handleDataImportComplete}
-                clientId={selectedClientId || undefined}
-                clientName={selectedClientId ? clients.find(c => c.id === selectedClientId)?.name : undefined}
+                clients={clients}
+                selectedClientId={selectedClientId || undefined}
             />
         </div>
     );
