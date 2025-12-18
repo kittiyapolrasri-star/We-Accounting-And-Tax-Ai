@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Settings, Building, Database, FileText, Save, Upload,
     Download, Bell, Globe, Palette, Moon, Sun,
-    Check, RefreshCw, Key, Mail, Phone, Loader2, AlertCircle
+    Check, RefreshCw, Key, Mail, Phone, Loader2, AlertCircle, History
 } from 'lucide-react';
 import { loadSettings, saveSettings, SystemSettingsData, defaultSettings } from '../services/settingsService';
+import { createBackup, downloadBackup, readBackupFile, restoreBackup, getRecentBackups, BackupData } from '../services/backupService';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Props {
@@ -23,6 +24,13 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
     const [settings, setSettings] = useState<SystemSettingsData>(defaultSettings);
     const [originalSettings, setOriginalSettings] = useState<SystemSettingsData>(defaultSettings);
 
+    // Backup state
+    const [isBackingUp, setIsBackingUp] = useState(false);
+    const [isRestoring, setIsRestoring] = useState(false);
+    const [backupMessage, setBackupMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [recentBackups, setRecentBackups] = useState<Array<{ id: string; createdAt: string; totalDocuments: number }>>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     // โหลดการตั้งค่าจาก Firestore เมื่อเริ่มต้น
     useEffect(() => {
         const fetchSettings = async () => {
@@ -31,6 +39,10 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                 const loadedSettings = await loadSettings();
                 setSettings(loadedSettings);
                 setOriginalSettings(loadedSettings);
+
+                // Load recent backups
+                const backups = await getRecentBackups(5);
+                setRecentBackups(backups);
             } catch (error) {
                 console.error('Failed to load settings:', error);
             } finally {
@@ -72,6 +84,68 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
     const handleReset = () => {
         setSettings(originalSettings);
         setHasChanges(false);
+    };
+
+    // Backup handlers
+    const handleCreateBackup = async () => {
+        setIsBackingUp(true);
+        setBackupMessage(null);
+
+        try {
+            const backup = await createBackup(user?.uid);
+            downloadBackup(backup);
+            setBackupMessage({ type: 'success', text: `สำรองข้อมูลสำเร็จ: ${backup.metadata.totalDocuments} รายการ` });
+
+            // Refresh recent backups
+            const backups = await getRecentBackups(5);
+            setRecentBackups(backups);
+        } catch (error: any) {
+            setBackupMessage({ type: 'error', text: error.message || 'ไม่สามารถสำรองข้อมูลได้' });
+        } finally {
+            setIsBackingUp(false);
+            setTimeout(() => setBackupMessage(null), 5000);
+        }
+    };
+
+    const handleRestoreClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsRestoring(true);
+        setBackupMessage(null);
+
+        try {
+            const backupData = await readBackupFile(file);
+
+            // Confirm with user
+            const confirm = window.confirm(
+                `ต้องการกู้คืนข้อมูลจากไฟล์สำรองนี้หรือไม่?\n\n` +
+                `วันที่สร้าง: ${new Date(backupData.createdAt).toLocaleString('th-TH')}\n` +
+                `จำนวนข้อมูล: ${backupData.metadata.totalDocuments} รายการ\n` +
+                `Collections: ${backupData.metadata.includedCollections.join(', ')}\n\n` +
+                `⚠️ ข้อมูลปัจจุบันจะถูกแทนที่!`
+            );
+
+            if (confirm) {
+                const result = await restoreBackup(backupData, { clearExisting: true, userId: user?.uid });
+
+                if (result.success) {
+                    setBackupMessage({ type: 'success', text: `กู้คืนข้อมูลสำเร็จ: ${result.restoredCount} รายการ` });
+                } else {
+                    setBackupMessage({ type: 'error', text: `กู้คืนบางส่วนล้มเหลว: ${result.errors.join(', ')}` });
+                }
+            }
+        } catch (error: any) {
+            setBackupMessage({ type: 'error', text: error.message || 'ไม่สามารถกู้คืนได้' });
+        } finally {
+            setIsRestoring(false);
+            e.target.value = ''; // Reset file input
+            setTimeout(() => setBackupMessage(null), 5000);
+        }
     };
 
     const tabs = [
@@ -120,8 +194,8 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as typeof activeTab)}
                             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-[2px] ${activeTab === tab.id
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
                                 }`}
                         >
                             <Icon size={16} />
@@ -200,8 +274,8 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                                 type="button"
                                                 onClick={() => setSettings({ ...settings, theme: theme.value as SystemSettingsData['theme'] })}
                                                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${settings.theme === theme.value
-                                                        ? 'border-blue-600 bg-blue-50 text-blue-600'
-                                                        : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+                                                    ? 'border-blue-600 bg-blue-50 text-blue-600'
+                                                    : 'border-slate-300 text-slate-600 hover:bg-slate-50'
                                                     }`}
                                             >
                                                 <Icon size={16} />
@@ -317,13 +391,13 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                             },
                                         })}
                                         className={`w-12 h-6 rounded-full transition-colors ${settings.notifications[item.key as keyof typeof settings.notifications]
-                                                ? 'bg-blue-600'
-                                                : 'bg-slate-300'
+                                            ? 'bg-blue-600'
+                                            : 'bg-slate-300'
                                             }`}
                                     >
                                         <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform ${settings.notifications[item.key as keyof typeof settings.notifications]
-                                                ? 'translate-x-6'
-                                                : 'translate-x-0.5'
+                                            ? 'translate-x-6'
+                                            : 'translate-x-0.5'
                                             }`} />
                                     </button>
                                 </div>
@@ -339,6 +413,26 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                             <Database size={20} />
                             สำรองข้อมูล
                         </h2>
+
+                        {/* Hidden file input for restore */}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileSelect}
+                            accept=".json"
+                            className="hidden"
+                        />
+
+                        {/* Backup Message */}
+                        {backupMessage && (
+                            <div className={`p-4 rounded-lg flex items-center gap-3 ${backupMessage.type === 'success'
+                                    ? 'bg-green-50 border border-green-200 text-green-700'
+                                    : 'bg-red-50 border border-red-200 text-red-700'
+                                }`}>
+                                {backupMessage.type === 'success' ? <Check size={20} /> : <AlertCircle size={20} />}
+                                {backupMessage.text}
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-2 gap-6">
                             {/* Auto Backup Toggle */}
@@ -396,19 +490,48 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                             <div className="col-span-2 flex gap-4">
                                 <button
                                     type="button"
-                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                                    onClick={handleCreateBackup}
+                                    disabled={isBackingUp}
+                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg transition-colors"
                                 >
-                                    <Download size={18} />
-                                    สำรองข้อมูลทันที
+                                    {isBackingUp ? <RefreshCw size={18} className="animate-spin" /> : <Download size={18} />}
+                                    {isBackingUp ? 'กำลังสำรอง...' : 'สำรองข้อมูลทันที'}
                                 </button>
                                 <button
                                     type="button"
-                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors"
+                                    onClick={handleRestoreClick}
+                                    disabled={isRestoring}
+                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-600 hover:bg-slate-700 disabled:bg-slate-400 text-white font-medium rounded-lg transition-colors"
                                 >
-                                    <Upload size={18} />
-                                    กู้คืนจากไฟล์สำรอง
+                                    {isRestoring ? <RefreshCw size={18} className="animate-spin" /> : <Upload size={18} />}
+                                    {isRestoring ? 'กำลังกู้คืน...' : 'กู้คืนจากไฟล์สำรอง'}
                                 </button>
                             </div>
+
+                            {/* Recent Backups */}
+                            {recentBackups.length > 0 && (
+                                <div className="col-span-2">
+                                    <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
+                                        <History size={16} />
+                                        ประวัติการสำรองข้อมูลล่าสุด
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {recentBackups.map((backup) => (
+                                            <div key={backup.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg text-sm">
+                                                <div>
+                                                    <span className="font-medium text-slate-700">
+                                                        {new Date(backup.createdAt).toLocaleString('th-TH')}
+                                                    </span>
+                                                    <span className="text-slate-500 ml-2">
+                                                        ({backup.totalDocuments} รายการ)
+                                                    </span>
+                                                </div>
+                                                <span className="text-green-600">✓ สำเร็จ</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
