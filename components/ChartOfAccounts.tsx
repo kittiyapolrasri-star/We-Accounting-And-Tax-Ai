@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { THAI_GL_CODES } from '../constants';
-import { Folder, FolderOpen, Plus, Search, Edit2, MoreHorizontal, CheckCircle2, X, Save, Loader2 } from 'lucide-react';
+import { Folder, FolderOpen, Plus, Search, Edit2, MoreHorizontal, CheckCircle2, X, Save, Loader2, Download, FileSpreadsheet } from 'lucide-react';
+import { exportChartOfAccountsExcel } from '../services/comprehensiveExport';
 
 interface Account {
     code: string;
@@ -170,12 +171,32 @@ const ChartOfAccounts: React.FC = () => {
                     </h3>
                     <p className="text-sm text-slate-500">จัดการโครงสร้างบัญชีแยกประเภทมาตรฐาน TAS</p>
                 </div>
-                <button
-                    onClick={handleAddAccount}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
-                >
-                    <Plus size={16} /> เพิ่มบัญชีใหม่
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => {
+                            const accountsForExport = accounts.map(acc => ({
+                                code: acc.code,
+                                name: acc.name,
+                                type: acc.code.startsWith('1') ? 'Asset' :
+                                    acc.code.startsWith('2') ? 'Liability' :
+                                        acc.code.startsWith('3') ? 'Equity' :
+                                            acc.code.startsWith('4') ? 'Revenue' : 'Expense',
+                                parentCode: '',
+                                isActive: true
+                            }));
+                            exportChartOfAccountsExcel(accountsForExport, 'Company');
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200"
+                    >
+                        <FileSpreadsheet size={16} /> Export Excel
+                    </button>
+                    <button
+                        onClick={handleAddAccount}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200"
+                    >
+                        <Plus size={16} /> เพิ่มบัญชีใหม่
+                    </button>
+                </div>
             </div>
 
             <div className="p-4 border-b border-slate-100 bg-white flex flex-wrap gap-4 items-center justify-between">

@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react';
 import { PostedGLEntry } from '../types';
-import { ArrowDown, ArrowUp, Download, ZoomIn, FileSpreadsheet } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, ZoomIn, FileSpreadsheet, FileText } from 'lucide-react';
+import { exportTrialBalancePDF } from '../services/comprehensiveExport';
 
 interface Props {
   entries: PostedGLEntry[];
   onDrillDown?: (accountCode: string) => void;
+  clientName?: string;
+  clientTaxId?: string;
 }
 
 interface AccountSummary {
@@ -16,7 +19,7 @@ interface AccountSummary {
   balance: number;
 }
 
-const TrialBalance: React.FC<Props> = ({ entries, onDrillDown }) => {
+const TrialBalance: React.FC<Props> = ({ entries, onDrillDown, clientName = 'Company', clientTaxId = '0000000000000' }) => {
   const summary = useMemo(() => {
     const accMap = new Map<string, AccountSummary>();
 
@@ -88,6 +91,25 @@ const TrialBalance: React.FC<Props> = ({ entries, onDrillDown }) => {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => {
+              const period = new Date().toLocaleDateString('th-TH');
+              exportTrialBalancePDF(
+                clientName,
+                clientTaxId,
+                period,
+                summary.map(s => ({
+                  accountCode: s.code,
+                  accountName: s.name,
+                  debit: s.debit,
+                  credit: s.credit
+                }))
+              );
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-md shadow-blue-200"
+          >
+            <FileText size={16} /> Export PDF
+          </button>
+          <button
             onClick={handleExportExpress}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-md shadow-emerald-200"
           >
@@ -109,7 +131,7 @@ const TrialBalance: React.FC<Props> = ({ entries, onDrillDown }) => {
             }}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-100 transition-colors shadow-sm text-slate-600"
           >
-            <Download size={16} /> Excel
+            <Download size={16} /> CSV
           </button>
         </div>
       </div>
@@ -143,10 +165,10 @@ const TrialBalance: React.FC<Props> = ({ entries, onDrillDown }) => {
                 <td className="px-6 py-3 text-slate-800 font-medium">{acc.name}</td>
                 <td className="px-6 py-3">
                   <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${acc.type === 'Asset' ? 'bg-emerald-50 text-emerald-600' :
-                      acc.type === 'Liability' ? 'bg-amber-50 text-amber-600' :
-                        acc.type === 'Equity' ? 'bg-purple-50 text-purple-600' :
-                          acc.type === 'Revenue' ? 'bg-blue-50 text-blue-600' :
-                            'bg-rose-50 text-rose-600'
+                    acc.type === 'Liability' ? 'bg-amber-50 text-amber-600' :
+                      acc.type === 'Equity' ? 'bg-purple-50 text-purple-600' :
+                        acc.type === 'Revenue' ? 'bg-blue-50 text-blue-600' :
+                          'bg-rose-50 text-rose-600'
                     }`}>
                     {acc.type}
                   </span>

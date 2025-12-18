@@ -2,9 +2,10 @@ import React, { useState, useMemo } from 'react';
 import {
   TrendingUp, TrendingDown, DollarSign, Building, Calendar, Download,
   ChevronDown, ChevronUp, Printer, FileText, ArrowUpRight, ArrowDownRight,
-  Wallet, Factory, Landmark, RefreshCw, HelpCircle, Info
+  Wallet, Factory, Landmark, RefreshCw, HelpCircle, Info, FileSpreadsheet
 } from 'lucide-react';
 import { PostedGLEntry, Client } from '../types';
+import { exportCashFlowPDF } from '../services/comprehensiveExport';
 
 interface Props {
   clients: Client[];
@@ -397,35 +398,31 @@ const CashFlowStatement: React.FC<Props> = ({ clients, glEntries }) => {
 
           {/* Actions */}
           <button
+            onClick={() => {
+              const client = clients.find(c => c.id === selectedClientId);
+              exportCashFlowPDF(
+                client?.name || 'Company',
+                getPeriodLabel(),
+                {
+                  operating: Object.entries(cashFlows.operating.items).map(([key, val]) => ({ name: key, amount: val as number })),
+                  investing: Object.entries(cashFlows.investing.items).map(([key, val]) => ({ name: key, amount: val as number })),
+                  financing: Object.entries(cashFlows.financing.items).map(([key, val]) => ({ name: key, amount: val as number })),
+                  beginningCash: 0,
+                  endingCash: cashFlows.netChange
+                }
+              );
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+          >
+            <Download size={18} />
+            Export PDF
+          </button>
+          <button
             onClick={() => window.print()}
             className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
           >
             <Printer size={18} />
-            พิมพ์
-          </button>
-          <button
-            onClick={() => {
-              const data = {
-                period: getPeriodLabel(),
-                client: clients.find(c => c.id === selectedClientId)?.name,
-                operating: cashFlows.operating,
-                investing: cashFlows.investing,
-                financing: cashFlows.financing,
-                netChange: cashFlows.netChange
-              };
-              const dataStr = JSON.stringify(data, null, 2);
-              const blob = new Blob([dataStr], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `cashflow_${selectedClientId}_${selectedYear}_${selectedMonth}.json`;
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
-          >
-            <Download size={18} />
-            Export
+            Print
           </button>
         </div>
       </div>
