@@ -193,38 +193,6 @@ const Login: React.FC<Props> = ({ onLoginSuccess }) => {
           </button>
         </form>
 
-        {/* Demo Mode Button */}
-        {!resetMode && (
-          <div className="mt-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-slate-500">หรือ</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                // Create demo user
-                const demoUser = {
-                  uid: 'demo_user_001',
-                  email: 'demo@weaccounting.com',
-                  displayName: 'Demo User',
-                  role: 'admin',
-                  staffId: 'demo_staff_001',
-                  assignedClients: [],
-                };
-                onLoginSuccess(demoUser);
-              }}
-              className="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-lg flex items-center justify-center gap-2 transition-colors border border-slate-300"
-            >
-              🎮 เข้าดู Demo (ไม่ต้อง Login)
-            </button>
-          </div>
-        )}
-
         {/* Back to Login */}
         {resetMode && (
           <button
