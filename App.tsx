@@ -50,6 +50,7 @@ import RecurringTasksManager from './components/RecurringTasksManager';
 import SalesDataImport from './components/SalesDataImport';
 import SimpleAddClientModal from './components/SimpleAddClientModal';
 import EditClientModal from './components/EditClientModal';
+import DocumentUploadModal, { UploadContext } from './components/DocumentUploadModal';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
@@ -98,6 +99,9 @@ const AppContent: React.FC = () => {
 
     // Upload Queue State
     const [uploadQueue, setUploadQueue] = useState<File[]>([]);
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
+    const [uploadContext, setUploadContext] = useState<UploadContext | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Get current user info from auth context
@@ -797,12 +801,218 @@ const AppContent: React.FC = () => {
         }
 
         if (validFiles.length > 0) {
-            setUploadQueue(prev => [...prev, ...validFiles]);
-            validFiles.forEach(file => processQueueItem(file));
+            // *** NEW: Show upload modal for client/period selection first ***
+            setPendingUploadFiles(validFiles);
+            setShowUploadModal(true);
         }
 
         // Reset input to allow re-selecting same file
         event.target.value = '';
+    };
+
+    // NEW: Handle upload confirm from modal
+    const handleUploadConfirm = (context: UploadContext) => {
+        setUploadContext(context);
+        setShowUploadModal(false);
+
+        // Now process the files with the selected context
+        if (pendingUploadFiles.length > 0) {
+            setUploadQueue(prev => [...prev, ...pendingUploadFiles]);
+            pendingUploadFiles.forEach(file => processQueueItemWithContext(file, context));
+            setPendingUploadFiles([]);
+        }
+    };
+
+    // NEW: Process queue item with upload context
+    const processQueueItemWithContext = async (file: File, context: UploadContext) => {
+        const tempId = `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Optimistic Update with selected client
+        const initialDoc: DocumentRecord = {
+            id: tempId,
+            uploaded_at: new Date().toISOString(),
+            filename: file.name,
+            status: 'processing',
+            assigned_to: null,
+            client_name: context.clientName,
+            clientId: context.clientId,
+            amount: 0,
+            ai_data: null,
+            mime_type: file.type,
+            // Use context period (may be overridden by AI if autoDetectPeriod is true)
+            year: context.autoDetectPeriod ? undefined : context.year,
+            month: context.autoDetectPeriod ? undefined : String(context.month).padStart(2, '0'),
+            period: context.autoDetectPeriod ? undefined : context.period
+        };
+
+        setDocuments(prev => [initialDoc, ...prev]);
+
+        try {
+            // 1. Upload file to Firebase Storage (if configured)
+            let fileUrl: string | undefined;
+            let storagePath: string | undefined;
+
+            try {
+                const { uploadDocument } = await import('./services/documentStorage');
+                const uploadResult = await uploadDocument(
+                    file,
+                    context.clientId,
+                    'invoice',
+                    CURRENT_USER_ID
+                );
+                if (uploadResult.success) {
+                    fileUrl = uploadResult.fileUrl;
+                    storagePath = uploadResult.storagePath;
+                    console.log('✅ File uploaded to storage:', storagePath);
+                }
+            } catch (uploadError) {
+                console.warn('File upload skipped (Storage not configured):', uploadError);
+            }
+
+            // 1.5 Image Enhancement for low-quality images
+            let processableFile = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    const { needsEnhancement, enhanceImage } = await import('./services/imageEnhancement');
+                    const needsWork = await needsEnhancement(file);
+
+                    if (needsWork) {
+                        console.log('🔧 Enhancing image for better OCR...');
+                        const enhanced = await enhanceImage(file, {
+                            autoCorrect: true,
+                            sharpen: true,
+                            contrast: 1.2,
+                        });
+
+                        if (enhanced.enhanced) {
+                            const base64Response = await fetch(enhanced.dataUrl);
+                            const blob = await base64Response.blob();
+                            processableFile = new File([blob], file.name, { type: enhanced.mimeType });
+                            console.log(`✅ Image enhanced: ${enhanced.corrections.join(', ')}`);
+                        }
+                    }
+                } catch (enhanceError) {
+                    console.warn('Image enhancement skipped:', enhanceError);
+                }
+            }
+
+            // 2. Analyze with Gemini via Cloud Functions (secure)
+            const rawResult = await analyzeDocument(processableFile, context.clientId, context.clientName);
+
+            // 3. Post-Process with Automation Engine
+            const refinedResult = applyVendorRules(rawResult);
+
+            // 4. Determine final period (auto-detect or manual)
+            let finalYear: number;
+            let finalMonth: string;
+            let finalPeriod: string;
+
+            if (context.autoDetectPeriod && refinedResult.header_data.issue_date) {
+                // Auto-detect from AI-extracted date
+                const aiDate = new Date(refinedResult.header_data.issue_date);
+                if (!isNaN(aiDate.getTime())) {
+                    finalYear = aiDate.getFullYear();
+                    finalMonth = String(aiDate.getMonth() + 1).padStart(2, '0');
+                    finalPeriod = `${finalYear}-${finalMonth}`;
+                    console.log(`🤖 Auto-detected period from AI: ${finalPeriod}`);
+                } else {
+                    // Fallback to manual selection
+                    finalYear = context.year;
+                    finalMonth = String(context.month).padStart(2, '0');
+                    finalPeriod = context.period;
+                }
+            } else {
+                // Use manual selection
+                finalYear = context.year;
+                finalMonth = String(context.month).padStart(2, '0');
+                finalPeriod = context.period;
+            }
+
+            // 5. Check for duplicates
+            try {
+                const { checkDuplicate } = await import('./services/documentValidation');
+                const invNumber = refinedResult.header_data.inv_number;
+                const vendorTaxId = refinedResult.parties.counterparty.tax_id;
+                const amount = refinedResult.financials.grand_total;
+                const date = refinedResult.header_data.issue_date;
+
+                const existingDocs = documents.filter(d => d.clientId === context.clientId);
+                const duplicateCheck = await checkDuplicate(existingDocs, invNumber, vendorTaxId, amount, date);
+
+                if (duplicateCheck.isDuplicate) {
+                    const matchType = duplicateCheck.matchType === 'exact' ? 'เลขที่เอกสารซ้ำ' : 'ยอดเงินและคู่ค้าใกล้เคียง';
+                    showNotification(`⚠️ พบเอกสารที่อาจซ้ำ: ${matchType}`, 'warning');
+                    console.warn('Potential duplicate detected:', duplicateCheck.matches);
+                }
+            } catch (dupError) {
+                console.warn('Duplicate check failed (non-critical):', dupError);
+            }
+
+            // 6. Create finalized document with storage references and period indexing
+            const finalizedDoc: DocumentRecord = {
+                id: `D${Date.now()}`,
+                uploaded_at: new Date().toISOString(),
+                filename: file.name,
+                status: refinedResult.status === 'auto_approved' ? 'approved' : 'pending_review',
+                assigned_to: null,
+                client_name: context.clientName,
+                clientId: context.clientId,
+                amount: refinedResult.financials.grand_total,
+                ai_data: refinedResult,
+                file_url: fileUrl,
+                storage_path: storagePath,
+                mime_type: file.type,
+                // ** Use determined period **
+                year: finalYear,
+                month: finalMonth,
+                period: finalPeriod
+            };
+
+            // Replace temp doc with finalized
+            setDocuments(prev => prev.map(d => d.id === tempId ? finalizedDoc : d));
+
+            // Persist to database
+            await databaseService.updateDocument(finalizedDoc);
+
+            // Log action
+            await logAction('UPLOAD', `Uploaded ${file.name} to ${context.clientName} (period: ${finalPeriod})`);
+            showNotification(`✅ อัปโหลด "${file.name}" สำเร็จ → งวด ${finalPeriod}`);
+
+            // Auto-create fixed assets if detected
+            if (refinedResult.accounting_entry.journal_lines.some(l => l.account_code.startsWith('12'))) {
+                const newAssets: FixedAsset[] = [];
+                refinedResult.accounting_entry.journal_lines.forEach(line => {
+                    if (line.account_code.startsWith('12')) {
+                        const newAsset: FixedAsset = {
+                            id: `FA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            clientId: context.clientId,
+                            asset_code: `${line.account_code}-${String(fixedAssets.length + 1).padStart(3, '0')}`,
+                            name: line.account_name_th,
+                            category: line.account_code.startsWith('124') ? 'Equipment' : 'Building',
+                            acquisition_date: refinedResult.header_data.issue_date,
+                            cost: line.amount,
+                            residual_value: 1,
+                            useful_life_years: 5,
+                            accumulated_depreciation_bf: 0,
+                            current_month_depreciation: (line.amount - 1) / 5 / 12
+                        };
+                        newAssets.push(newAsset);
+                    }
+                });
+                if (newAssets.length > 0) {
+                    setFixedAssets([...fixedAssets, ...newAssets]);
+                }
+            }
+
+        } catch (error: any) {
+            console.error('❌ Document Processing Error:', error);
+            setDocuments(prev => prev.map(d =>
+                d.id === tempId ? { ...d, status: 'rejected', ai_data: null } : d
+            ));
+            showNotification(`❌ ไม่สามารถประมวลผล "${file.name}": ${error.message}`, 'error');
+        }
+
+        setUploadQueue(prev => prev.filter(f => f.name !== file.name));
     };
 
     const handleClientPortalUpload = (files: File[], client: Client) => {
@@ -1497,6 +1707,18 @@ const AppContent: React.FC = () => {
                     onError={toastError}
                 />
             )}
+
+            {/* Document Upload Modal - Client/Period Selection */}
+            <DocumentUploadModal
+                isOpen={showUploadModal}
+                onClose={() => {
+                    setShowUploadModal(false);
+                    setPendingUploadFiles([]);
+                }}
+                onConfirm={handleUploadConfirm}
+                clients={clients}
+                selectedClientId={selectedClientId || undefined}
+            />
         </div>
     );
 };
