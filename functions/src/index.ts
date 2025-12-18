@@ -5,6 +5,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { analyzeDocumentHandler } from "./gemini";
+import { aiAgentHandler } from "./aiAgentHandler";
 import { verifyAuth, checkRole, checkClientAccess } from "./middleware";
 
 // Initialize Firebase Admin
@@ -144,6 +145,13 @@ app.post("/api/analyze-document",
   verifyAuth,
   analysisLimiter,
   analyzeDocumentHandler
+);
+
+// AI Agent Processing (protected)
+app.post("/api/ai-agent",
+  verifyAuth,
+  analysisLimiter,
+  aiAgentHandler
 );
 
 // Admin routes (requires admin role)

@@ -1,73 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Settings, Building, Database, FileText, Save, Upload,
-    Download, Shield, Bell, Globe, Palette, Moon, Sun,
-    Check, AlertCircle, RefreshCw, Key, Mail, Phone
+    Download, Bell, Globe, Palette, Moon, Sun,
+    Check, RefreshCw, Key, Mail, Phone, Loader2, AlertCircle
 } from 'lucide-react';
+import { loadSettings, saveSettings, SystemSettingsData, defaultSettings } from '../services/settingsService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Props {
     onSave?: (settings: SystemSettingsData) => void;
 }
 
-interface SystemSettingsData {
-    companyName: string;
-    taxId: string;
-    address: string;
-    phone: string;
-    email: string;
-    fiscalYearStart: string;
-    currency: string;
-    language: string;
-    theme: 'light' | 'dark' | 'auto';
-    notifications: {
-        email: boolean;
-        push: boolean;
-        taxDeadlines: boolean;
-        documentProcessed: boolean;
-    };
-    backup: {
-        autoBackup: boolean;
-        frequency: 'daily' | 'weekly' | 'monthly';
-        retention: number;
-    };
-}
-
 const SystemSettings: React.FC<Props> = ({ onSave }) => {
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'general' | 'company' | 'notifications' | 'backup'>('general');
+    const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [hasChanges, setHasChanges] = useState(false);
 
-    const [settings, setSettings] = useState<SystemSettingsData>({
-        companyName: 'WE Accounting & Tax',
-        taxId: '0-1234-56789-01-2',
-        address: '123 ถนนสาทร แขวงยานนาวา เขตสาทร กรุงเทพฯ 10120',
-        phone: '02-123-4567',
-        email: 'contact@weaccounting.com',
-        fiscalYearStart: '01',
-        currency: 'THB',
-        language: 'th',
-        theme: 'light',
-        notifications: {
-            email: true,
-            push: true,
-            taxDeadlines: true,
-            documentProcessed: true,
-        },
-        backup: {
-            autoBackup: true,
-            frequency: 'daily',
-            retention: 30,
-        },
-    });
+    const [settings, setSettings] = useState<SystemSettingsData>(defaultSettings);
+    const [originalSettings, setOriginalSettings] = useState<SystemSettingsData>(defaultSettings);
+
+    // โหลดการตั้งค่าจาก Firestore เมื่อเริ่มต้น
+    useEffect(() => {
+        const fetchSettings = async () => {
+            setIsLoading(true);
+            try {
+                const loadedSettings = await loadSettings();
+                setSettings(loadedSettings);
+                setOriginalSettings(loadedSettings);
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    // ตรวจสอบว่ามีการเปลี่ยนแปลงหรือไม่
+    useEffect(() => {
+        const changed = JSON.stringify(settings) !== JSON.stringify(originalSettings);
+        setHasChanges(changed);
+    }, [settings, originalSettings]);
 
     const handleSave = async () => {
         setIsSaving(true);
-        // Simulate save
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setIsSaving(false);
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-        onSave?.(settings);
+        setSaveError(null);
+
+        try {
+            const result = await saveSettings(settings, user?.uid);
+
+            if (result.success) {
+                setSaveSuccess(true);
+                setOriginalSettings(settings);
+                setHasChanges(false);
+                setTimeout(() => setSaveSuccess(false), 3000);
+                onSave?.(settings);
+            } else {
+                setSaveError(result.error || 'ไม่สามารถบันทึกได้');
+            }
+        } catch (error: any) {
+            setSaveError(error.message || 'เกิดข้อผิดพลาด');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleReset = () => {
+        setSettings(originalSettings);
+        setHasChanges(false);
     };
 
     const tabs = [
@@ -76,6 +80,17 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
         { id: 'notifications', label: 'การแจ้งเตือน', icon: Bell },
         { id: 'backup', label: 'สำรองข้อมูล', icon: Database },
     ];
+
+    if (isLoading) {
+        return (
+            <div className="p-6 flex items-center justify-center min-h-[400px]">
+                <div className="text-center">
+                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
+                    <p className="text-slate-500">กำลังโหลดการตั้งค่า...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-6 max-w-6xl mx-auto">
@@ -87,6 +102,14 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                 </h1>
                 <p className="text-slate-500 mt-1">จัดการการตั้งค่าระบบและข้อมูลสำนักงาน</p>
             </div>
+
+            {/* Unsaved Changes Warning */}
+            {hasChanges && (
+                <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3">
+                    <AlertCircle className="text-amber-600" size={20} />
+                    <span className="text-amber-700">มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก</span>
+                </div>
+            )}
 
             {/* Tabs */}
             <div className="flex gap-2 mb-6 border-b border-slate-200">
@@ -174,6 +197,7 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                         return (
                                             <button
                                                 key={theme.value}
+                                                type="button"
                                                 onClick={() => setSettings({ ...settings, theme: theme.value as SystemSettingsData['theme'] })}
                                                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${settings.theme === theme.value
                                                         ? 'border-blue-600 bg-blue-50 text-blue-600'
@@ -218,6 +242,7 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                     type="text"
                                     value={settings.taxId}
                                     onChange={(e) => setSettings({ ...settings, taxId: e.target.value })}
+                                    placeholder="0-1234-56789-01-2"
                                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
@@ -230,6 +255,7 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                     type="tel"
                                     value={settings.phone}
                                     onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+                                    placeholder="02-123-4567"
                                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
@@ -242,6 +268,7 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                     type="email"
                                     value={settings.email}
                                     onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                                    placeholder="contact@company.com"
                                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
@@ -252,6 +279,7 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                     rows={3}
                                     value={settings.address}
                                     onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                                    placeholder="ที่อยู่สำนักงาน..."
                                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
@@ -280,6 +308,7 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                         <p className="text-sm text-slate-500">{item.desc}</p>
                                     </div>
                                     <button
+                                        type="button"
                                         onClick={() => setSettings({
                                             ...settings,
                                             notifications: {
@@ -319,6 +348,7 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
                                     <p className="text-sm text-slate-500">ระบบจะสำรองข้อมูลตามรอบที่กำหนด</p>
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={() => setSettings({
                                         ...settings,
                                         backup: { ...settings.backup, autoBackup: !settings.backup.autoBackup },
@@ -364,11 +394,17 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
 
                             {/* Manual Backup/Restore Buttons */}
                             <div className="col-span-2 flex gap-4">
-                                <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
+                                <button
+                                    type="button"
+                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                                >
                                     <Download size={18} />
                                     สำรองข้อมูลทันที
                                 </button>
-                                <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors">
+                                <button
+                                    type="button"
+                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors"
+                                >
                                     <Upload size={18} />
                                     กู้คืนจากไฟล์สำรอง
                                 </button>
@@ -380,16 +416,31 @@ const SystemSettings: React.FC<Props> = ({ onSave }) => {
 
             {/* Save Button */}
             <div className="mt-6 flex justify-end gap-4">
+                {saveError && (
+                    <div className="flex items-center gap-2 text-red-600">
+                        <AlertCircle size={18} />
+                        {saveError}
+                    </div>
+                )}
                 {saveSuccess && (
                     <div className="flex items-center gap-2 text-green-600">
                         <Check size={18} />
                         บันทึกสำเร็จ
                     </div>
                 )}
+                {hasChanges && (
+                    <button
+                        type="button"
+                        onClick={handleReset}
+                        className="px-6 py-2.5 text-slate-600 hover:text-slate-800 font-medium transition-colors"
+                    >
+                        ยกเลิกการเปลี่ยนแปลง
+                    </button>
+                )}
                 <button
                     onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                    disabled={isSaving || !hasChanges}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isSaving ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
                     {isSaving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}

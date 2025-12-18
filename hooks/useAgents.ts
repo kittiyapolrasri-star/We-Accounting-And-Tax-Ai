@@ -1,65 +1,50 @@
 /**
  * useAgents Hook
- * React hook for connecting AI Agents to UI components
+ * React hook for connecting AI Agents to Gemini API via Cloud Functions
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { AgentOrchestrator } from '../services/agents/agentOrchestrator';
-import { taxAgentHandler } from '../services/agents/handlers/taxAgentHandler';
-import { reconciliationAgentHandler } from '../services/agents/handlers/reconciliationAgentHandler';
-import { taskAssignmentAgentHandler } from '../services/agents/handlers/taskAssignmentAgentHandler';
-import { notificationAgentHandler } from '../services/agents/handlers/notificationAgentHandler';
-import { AgentType, AgentPriority, AgentInput, AgentMetrics } from '../types/agents';
+import { useState, useCallback } from 'react';
+import {
+  calculateTaxesWithAI,
+  autoReconcileWithAI,
+  autoAssignTasksWithAI,
+  checkDeadlinesWithAI,
+  AgentResponse,
+} from '../services/aiAgentService';
+import { AgentType, AgentMetrics } from '../types/agents';
 import { Task } from '../types/tasks';
 import { Staff, Client, DocumentRecord } from '../types';
 
 interface AgentState {
   isProcessing: boolean;
   currentAgent: AgentType | null;
-  lastResult: any | null;
+  lastResult: AgentResponse | null;
   error: string | null;
-  metrics: Map<AgentType, AgentMetrics>;
 }
 
 interface UseAgentsReturn {
   // State
   isProcessing: boolean;
   currentAgent: AgentType | null;
-  lastResult: any | null;
+  lastResult: AgentResponse | null;
   error: string | null;
 
   // Tax Agent
-  calculateTaxes: (documents: DocumentRecord[], period?: string, clientId?: string) => Promise<any>;
+  calculateTaxes: (documents: DocumentRecord[], period?: string, clientId?: string) => Promise<AgentResponse>;
 
   // Reconciliation Agent
-  autoReconcile: (bankTransactions: any[], glEntries: any[], documents?: DocumentRecord[]) => Promise<any>;
+  autoReconcile: (bankTransactions: any[], glEntries: any[], documents?: DocumentRecord[]) => Promise<AgentResponse>;
 
   // Task Assignment Agent
-  autoAssignTasks: (tasks: Task[], staff: Staff[], unassignedOnly?: boolean) => Promise<any>;
+  autoAssignTasks: (tasks: Task[], staff: Staff[], unassignedOnly?: boolean) => Promise<AgentResponse>;
 
   // Notification Agent
-  checkDeadlines: (tasks: Task[], clients: Client[], documents: DocumentRecord[]) => Promise<any>;
+  checkDeadlines: (tasks: Task[], clients: Client[], documents: DocumentRecord[]) => Promise<AgentResponse>;
 
   // Utilities
-  getAgentMetrics: (agentType: AgentType) => AgentMetrics | AgentMetrics[] | undefined;
+  getAgentMetrics: (agentType: AgentType) => AgentMetrics | undefined;
   clearError: () => void;
 }
-
-// Singleton orchestrator
-let orchestratorInstance: AgentOrchestrator | null = null;
-
-const getOrchestrator = (): AgentOrchestrator => {
-  if (!orchestratorInstance) {
-    orchestratorInstance = new AgentOrchestrator();
-
-    // Register all handlers
-    orchestratorInstance.registerAgent('tax', taxAgentHandler);
-    orchestratorInstance.registerAgent('reconciliation', reconciliationAgentHandler);
-    orchestratorInstance.registerAgent('task_assignment', taskAssignmentAgentHandler);
-    orchestratorInstance.registerAgent('notification', notificationAgentHandler);
-  }
-  return orchestratorInstance;
-};
 
 export const useAgents = (): UseAgentsReturn => {
   const [state, setState] = useState<AgentState>({
@@ -67,49 +52,23 @@ export const useAgents = (): UseAgentsReturn => {
     currentAgent: null,
     lastResult: null,
     error: null,
-    metrics: new Map(),
   });
 
-  const orchestratorRef = useRef<AgentOrchestrator>(getOrchestrator());
-
-  // Generic agent execution wrapper
-  const executeAgent = useCallback(async (
-    agentType: AgentType,
-    input: AgentInput,
-    priority: AgentPriority = 'medium'
-  ) => {
+  // Tax Agent: Calculate taxes using Gemini AI
+  const calculateTaxes = useCallback(async (
+    documents: DocumentRecord[],
+    period?: string,
+    clientId?: string
+  ): Promise<AgentResponse> => {
     setState(prev => ({
       ...prev,
       isProcessing: true,
-      currentAgent: agentType,
+      currentAgent: 'tax',
       error: null,
     }));
 
     try {
-      const executionId = await orchestratorRef.current.submitTask(agentType, input, priority);
-
-      // Poll for completion with exponential backoff
-      const maxWaitTime = 30000; // 30 seconds max
-      const pollInterval = 200; // Initial poll interval
-      let elapsed = 0;
-      let result = null;
-
-      while (elapsed < maxWaitTime) {
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-        elapsed += pollInterval;
-
-        const execution = orchestratorRef.current.getExecution(executionId);
-
-        if (execution && ['completed', 'failed', 'escalated'].includes(execution.status)) {
-          result = orchestratorRef.current.getExecutionResult(executionId);
-          break;
-        }
-      }
-
-      // If still no result after timeout, get whatever we have
-      if (!result) {
-        result = orchestratorRef.current.getExecutionResult(executionId);
-      }
+      const result = await calculateTaxesWithAI(documents, period, clientId);
 
       setState(prev => ({
         ...prev,
@@ -131,82 +90,133 @@ export const useAgents = (): UseAgentsReturn => {
     }
   }, []);
 
-  // Tax Agent: Calculate taxes
-  const calculateTaxes = useCallback(async (
-    documents: DocumentRecord[],
-    period?: string,
-    clientId?: string
-  ) => {
-    return executeAgent('tax', {
-      type: 'tax_calculation',
-      data: {},
-      context: {
-        documents,
-        period: period || new Date().toISOString().slice(0, 7),
-        clientId,
-      },
-    }, 'high');
-  }, [executeAgent]);
-
-  // Reconciliation Agent: Auto-match transactions
+  // Reconciliation Agent: Auto-match transactions using Gemini AI
   const autoReconcile = useCallback(async (
     bankTransactions: any[],
     glEntries: any[],
     documents?: DocumentRecord[]
-  ) => {
-    return executeAgent('reconciliation', {
-      type: 'reconciliation',
-      data: {},
-      context: {
-        bankTransactions,
-        glEntries,
-        documents,
-      },
-    }, 'medium');
-  }, [executeAgent]);
+  ): Promise<AgentResponse> => {
+    setState(prev => ({
+      ...prev,
+      isProcessing: true,
+      currentAgent: 'reconciliation',
+      error: null,
+    }));
 
-  // Task Assignment Agent: Auto-assign unassigned tasks
+    try {
+      const result = await autoReconcileWithAI(bankTransactions, glEntries, documents);
+
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        currentAgent: null,
+        lastResult: result,
+      }));
+
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        currentAgent: null,
+        error: errorMessage,
+      }));
+      throw error;
+    }
+  }, []);
+
+  // Task Assignment Agent: Auto-assign unassigned tasks using Gemini AI
   const autoAssignTasks = useCallback(async (
     tasks: Task[],
     staff: Staff[],
     unassignedOnly: boolean = true
-  ) => {
-    const tasksToProcess = unassignedOnly
-      ? tasks.filter(t => !t.assignedTo && t.status !== 'completed' && t.status !== 'cancelled')
-      : tasks;
+  ): Promise<AgentResponse> => {
+    setState(prev => ({
+      ...prev,
+      isProcessing: true,
+      currentAgent: 'task_assignment',
+      error: null,
+    }));
 
-    return executeAgent('task_assignment', {
-      type: 'task_assignment',
-      data: {},
-      context: {
-        tasks,
-        staff,
-        unassignedTasks: tasksToProcess,
-      },
-    }, 'medium');
-  }, [executeAgent]);
+    try {
+      const tasksToProcess = unassignedOnly
+        ? tasks.filter(t => !t.assignedTo && t.status !== 'completed' && t.status !== 'cancelled')
+        : tasks;
 
-  // Notification Agent: Check all deadlines
+      const result = await autoAssignTasksWithAI(tasks, staff, tasksToProcess);
+
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        currentAgent: null,
+        lastResult: result,
+      }));
+
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        currentAgent: null,
+        error: errorMessage,
+      }));
+      throw error;
+    }
+  }, []);
+
+  // Notification Agent: Check all deadlines using Gemini AI
   const checkDeadlines = useCallback(async (
     tasks: Task[],
     clients: Client[],
     documents: DocumentRecord[]
-  ) => {
-    return executeAgent('notification', {
-      type: 'check_deadlines',
-      data: {},
-      context: {
-        tasks,
-        clients,
-        documents,
-        currentDate: new Date().toISOString(),
-      },
-    }, 'low');
-  }, [executeAgent]);
+  ): Promise<AgentResponse> => {
+    setState(prev => ({
+      ...prev,
+      isProcessing: true,
+      currentAgent: 'notification',
+      error: null,
+    }));
 
-  // Get metrics for specific agent
-  const getAgentMetrics = useCallback((agentType: AgentType) => {
-    return orchestratorRef.current.getMetrics(agentType);
+    try {
+      const result = await checkDeadlinesWithAI(tasks, clients, documents);
+
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        currentAgent: null,
+        lastResult: result,
+      }));
+
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        currentAgent: null,
+        error: errorMessage,
+      }));
+      throw error;
+    }
+  }, []);
+
+  // Get metrics (placeholder - could be implemented with server-side metrics)
+  const getAgentMetrics = useCallback((agentType: AgentType): AgentMetrics | undefined => {
+    // Return mock metrics for now
+    return {
+      agentType,
+      period: 'day',
+      totalExecutions: 0,
+      successCount: 0,
+      failureCount: 0,
+      escalationCount: 0,
+      avgProcessingTimeMs: 0,
+      avgConfidence: 0,
+      costSavingsThb: 0,
+      timeSavedMinutes: 0,
+    };
   }, []);
 
   // Clear error
