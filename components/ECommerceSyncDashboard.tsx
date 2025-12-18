@@ -11,7 +11,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
     ShoppingCart, Link2, Unlink, RefreshCw, Check, X,
     ChevronRight, ExternalLink, Download, BarChart3,
-    AlertTriangle, Clock, DollarSign, Package, TrendingUp, Settings, AlertCircle
+    AlertTriangle, Clock, DollarSign, Package, TrendingUp, Settings, AlertCircle, Cog
 } from 'lucide-react';
 import {
     Platform,
@@ -21,6 +21,8 @@ import {
     ecommercePlatforms
 } from '../services/ecommercePlatforms';
 import { ecommerceApiService } from '../services/ecommerceApiService';
+import { clientECommerceManager, ClientECommerceSettings as ClientSettingsType } from '../services/clientECommerceManager';
+import ClientECommerceSettings from './ClientECommerceSettings';
 import { Client } from '../types';
 
 interface Props {
@@ -34,6 +36,8 @@ const ECommerceSyncDashboard: React.FC<Props> = ({ client, onOrdersImported }) =
     const [syncingPlatform, setSyncingPlatform] = useState<Platform | null>(null);
     const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
     const [showConnectModal, setShowConnectModal] = useState(false);
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [clientSettings, setClientSettings] = useState<ClientSettingsType | null>(null);
     const [activeTab, setActiveTab] = useState<'connections' | 'orders' | 'report'>('connections');
     const [dateRange, setDateRange] = useState({
         from: new Date(new Date().setDate(1)).toISOString().slice(0, 10),
@@ -44,7 +48,14 @@ const ECommerceSyncDashboard: React.FC<Props> = ({ client, onOrdersImported }) =
     // Check configuration status on mount
     useEffect(() => {
         setConfigStatus(ecommerceApiService.getConfigurationStatus());
-    }, []);
+        // Load client-specific settings
+        loadClientSettings();
+    }, [client.id]);
+
+    const loadClientSettings = async () => {
+        const settings = await clientECommerceManager.getSettings(client.id);
+        setClientSettings(settings);
+    };
 
     // Get all platforms
     const platforms = Object.entries(PLATFORM_CONFIG) as [Platform, typeof PLATFORM_CONFIG[Platform]][];
@@ -196,14 +207,24 @@ const ECommerceSyncDashboard: React.FC<Props> = ({ client, onOrdersImported }) =
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => setShowConnectModal(true)}
-                        className="px-4 py-2 bg-white text-orange-600 rounded-lg font-medium
-                     hover:bg-orange-50 flex items-center gap-2"
-                    >
-                        <Link2 size={18} />
-                        เชื่อมต่อ Platform
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowSettingsModal(true)}
+                            className="px-4 py-2 bg-white/20 text-white rounded-lg font-medium
+                         hover:bg-white/30 flex items-center gap-2"
+                        >
+                            <Cog size={18} />
+                            ตั้งค่า
+                        </button>
+                        <button
+                            onClick={() => setShowConnectModal(true)}
+                            className="px-4 py-2 bg-white text-orange-600 rounded-lg font-medium
+                         hover:bg-orange-50 flex items-center gap-2"
+                        >
+                            <Link2 size={18} />
+                            เชื่อมต่อ Platform
+                        </button>
+                    </div>
                 </div>
 
                 {/* Quick Stats */}
@@ -562,6 +583,21 @@ const ECommerceSyncDashboard: React.FC<Props> = ({ client, onOrdersImported }) =
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Settings Modal */}
+            {showSettingsModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <ClientECommerceSettings
+                        clientId={client.id}
+                        clientName={client.name}
+                        onSave={(settings) => {
+                            setClientSettings(settings);
+                            setShowSettingsModal(false);
+                        }}
+                        onClose={() => setShowSettingsModal(false)}
+                    />
                 </div>
             )}
         </div>
