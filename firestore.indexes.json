@@ -117,6 +117,20 @@
       ]
     },
     {
+      "collectionGroup": "gl_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "clientId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "bank_transactions",
       "queryScope": "COLLECTION",
       "fields": [
