@@ -3,7 +3,7 @@ import {
   Users, Plus, Search, FileText, Calculator, DollarSign, Calendar,
   CheckCircle2, AlertCircle, Download, Printer, ChevronDown, ChevronUp,
   Edit2, Trash2, Save, X, Building, CreditCard, Briefcase, Clock,
-  TrendingUp, UserPlus, FileSpreadsheet, Send, BookOpen, Filter
+  TrendingUp, UserPlus, FileSpreadsheet, Send, BookOpen, Filter, Loader2
 } from 'lucide-react';
 import {
   Employee, SalaryStructure, PaySlip, calculatePaySlip, calculateSSO,
@@ -11,84 +11,16 @@ import {
 } from '../services/payroll';
 import { PostedGLEntry, Client } from '../types';
 import { PremiumPDFGenerator, CompanyInfo } from '../services/pdfService';
+import {
+  loadEmployees, saveEmployee as saveEmployeeDB, deleteEmployee as deleteEmployeeDB,
+  loadAllSalaryStructures, saveSalaryStructure,
+  loadPayslips, savePayslipsBatch, updatePayslipStatus
+} from '../services/payrollDatabase';
 
 interface Props {
   clients: Client[];
   onPostJournal: (entries: PostedGLEntry[]) => Promise<void>;
 }
-
-// Mock data for demo
-const generateMockEmployees = (clientId: string): Employee[] => [
-  {
-    id: `EMP-001-${clientId}`,
-    clientId,
-    employeeCode: 'EMP001',
-    titleTh: 'นาย',
-    firstNameTh: 'สมชาย',
-    lastNameTh: 'ใจดี',
-    titleEn: 'Mr.',
-    firstNameEn: 'Somchai',
-    lastNameEn: 'Jaidee',
-    nationalId: '1-1234-56789-01-2',
-    taxId: '1234567890123',
-    dateOfBirth: '1985-05-15',
-    startDate: '2020-01-15',
-    position: 'ผู้จัดการฝ่ายบัญชี',
-    department: 'บัญชี',
-    bankAccount: '123-4-56789-0',
-    bankName: 'ธนาคารกสิกรไทย',
-    status: 'active',
-  },
-  {
-    id: `EMP-002-${clientId}`,
-    clientId,
-    employeeCode: 'EMP002',
-    titleTh: 'นางสาว',
-    firstNameTh: 'สมหญิง',
-    lastNameTh: 'รักงาน',
-    titleEn: 'Ms.',
-    firstNameEn: 'Somying',
-    lastNameEn: 'Rukngarn',
-    nationalId: '1-9876-54321-01-3',
-    taxId: '9876543210987',
-    dateOfBirth: '1990-08-20',
-    startDate: '2021-06-01',
-    position: 'พนักงานบัญชี',
-    department: 'บัญชี',
-    bankAccount: '987-6-54321-0',
-    bankName: 'ธนาคารไทยพาณิชย์',
-    status: 'active',
-  },
-  {
-    id: `EMP-003-${clientId}`,
-    clientId,
-    employeeCode: 'EMP003',
-    titleTh: 'นาย',
-    firstNameTh: 'วิชัย',
-    lastNameTh: 'มานะ',
-    titleEn: 'Mr.',
-    firstNameEn: 'Wichai',
-    lastNameEn: 'Mana',
-    nationalId: '1-5555-55555-55-5',
-    taxId: '5555555555555',
-    dateOfBirth: '1988-03-10',
-    startDate: '2019-02-01',
-    position: 'ผู้จัดการฝ่ายขาย',
-    department: 'ขาย',
-    bankAccount: '555-5-55555-5',
-    bankName: 'ธนาคารกรุงเทพ',
-    status: 'active',
-  },
-];
-
-const generateMockSalary = (employeeCode: string): SalaryStructure => {
-  const salaries: Record<string, SalaryStructure> = {
-    'EMP001': { baseSalary: 65000, positionAllowance: 10000, transportAllowance: 3000 },
-    'EMP002': { baseSalary: 35000, positionAllowance: 0, transportAllowance: 2000 },
-    'EMP003': { baseSalary: 55000, positionAllowance: 8000, transportAllowance: 3000, commission: 15000 },
-  };
-  return salaries[employeeCode] || { baseSalary: 25000 };
-};
 
 const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
   // State
@@ -106,20 +38,37 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
   const [expandedPayslip, setExpandedPayslip] = useState<string | null>(null);
   const [salaryData, setSalaryData] = useState<Record<string, SalaryStructure>>({});
 
-  // Load mock data
-  useEffect(() => {
-    if (selectedClientId) {
-      const mockEmps = generateMockEmployees(selectedClientId);
-      setEmployees(mockEmps);
+  const [isLoading, setIsLoading] = useState(false);
 
-      // Generate salary data
-      const salaries: Record<string, SalaryStructure> = {};
-      mockEmps.forEach(emp => {
-        salaries[emp.id] = generateMockSalary(emp.employeeCode);
-      });
-      setSalaryData(salaries);
-    }
-  }, [selectedClientId]);
+  // Load real data from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!selectedClientId) return;
+
+      setIsLoading(true);
+      try {
+        // Load employees from Firestore
+        const emps = await loadEmployees(selectedClientId);
+        setEmployees(emps);
+
+        // Load salary structures from Firestore
+        const salaries = await loadAllSalaryStructures(selectedClientId);
+        setSalaryData(salaries);
+
+        // Load payslips from Firestore
+        const period = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+        const slips = await loadPayslips(selectedClientId, period);
+        setPayslips(slips);
+      } catch (error) {
+        console.error('Error loading payroll data:', error);
+        showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedClientId, selectedMonth, selectedYear]);
 
   // Filter employees
   const filteredEmployees = useMemo(() => {
@@ -395,31 +344,59 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
   };
 
   // Add/Edit employee
-  const handleSaveEmployee = (employee: Employee) => {
-    if (editingEmployee) {
-      setEmployees(prev => prev.map(e => e.id === employee.id ? employee : e));
-    } else {
-      const newEmployee = {
+  const handleSaveEmployee = async (employee: Employee) => {
+    setIsProcessing(true);
+    try {
+      const result = await saveEmployeeDB({
         ...employee,
-        id: `EMP-${Date.now()}`,
         clientId: selectedClientId,
-      };
-      setEmployees(prev => [...prev, newEmployee]);
-      setSalaryData(prev => ({
-        ...prev,
-        [newEmployee.id]: { baseSalary: 25000 }
-      }));
+      });
+
+      if (result.success) {
+        if (editingEmployee) {
+          setEmployees(prev => prev.map(e => e.id === employee.id ? employee : e));
+        } else {
+          const newEmployee = { ...employee, id: result.id!, clientId: selectedClientId };
+          setEmployees(prev => [...prev, newEmployee]);
+          // Save default salary structure
+          await saveSalaryStructure(result.id!, selectedClientId, { baseSalary: 25000 });
+          setSalaryData(prev => ({
+            ...prev,
+            [result.id!]: { baseSalary: 25000 }
+          }));
+        }
+        setShowEmployeeModal(false);
+        setEditingEmployee(null);
+        showNotification('บันทึกข้อมูลพนักงานสำเร็จ', 'success');
+      } else {
+        showNotification(result.error || 'เกิดข้อผิดพลาด', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving employee:', error);
+      showNotification('เกิดข้อผิดพลาดในการบันทึก', 'error');
+    } finally {
+      setIsProcessing(false);
     }
-    setShowEmployeeModal(false);
-    setEditingEmployee(null);
-    showNotification('บันทึกข้อมูลพนักงานสำเร็จ', 'success');
   };
 
   // Delete employee
-  const handleDeleteEmployee = (empId: string) => {
+  const handleDeleteEmployee = async (empId: string) => {
     if (window.confirm('ต้องการลบพนักงานนี้ใช่หรือไม่?')) {
-      setEmployees(prev => prev.filter(e => e.id !== empId));
-      showNotification('ลบพนักงานสำเร็จ', 'success');
+      setIsProcessing(true);
+      try {
+        const result = await deleteEmployeeDB(empId);
+        if (result.success) {
+          setEmployees(prev => prev.filter(e => e.id !== empId));
+          showNotification('ลบพนักงานสำเร็จ', 'success');
+        } else {
+          showNotification(result.error || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting employee:', error);
+        showNotification('เกิดข้อผิดพลาดในการลบ', 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
