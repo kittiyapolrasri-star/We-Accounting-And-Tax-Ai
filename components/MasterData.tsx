@@ -1,177 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Building2, Plus, Search, Edit2, Trash2, Save, X, Users, CheckCircle,
   AlertTriangle, FileText, Phone, Mail, MapPin, CreditCard, ChevronDown,
-  ChevronUp, Shield, DollarSign, UserCheck, Clock, Filter, Download
+  ChevronUp, Shield, DollarSign, UserCheck, Clock, Filter, Download, Loader2
 } from 'lucide-react';
 import { Client } from '../types';
+import {
+  Vendor, ApprovalAuthority,
+  loadVendors, saveVendor as saveVendorDB, deleteVendor as deleteVendorDB,
+  loadApprovalAuthorities, saveApprovalAuthority as saveAuthorityDB, deleteApprovalAuthority as deleteAuthorityDB
+} from '../services/masterDataService';
 
 interface Props {
   clients: Client[];
 }
 
-// Vendor/Supplier Type
-export interface Vendor {
-  id: string;
-  clientId: string;
-  code: string;
-  name: string;
-  nameEn?: string;
-  taxId: string;
-  branch?: string;
-  address: string;
-  phone?: string;
-  email?: string;
-  contactPerson?: string;
-  vendorType: 'supplier' | 'service' | 'contractor' | 'other';
-  paymentTerms: number; // Days
-  whtRate: number; // Default WHT rate
-  bankName?: string;
-  bankAccount?: string;
-  creditLimit?: number;
-  status: 'active' | 'inactive' | 'blacklisted';
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Approval Authority
-export interface ApprovalAuthority {
-  id: string;
-  clientId: string;
-  staffId: string;
-  staffName: string;
-  role: string;
-  approvalLevel: number; // 1 = lowest, higher = more authority
-  minAmount: number;
-  maxAmount: number;
-  documentTypes: string[];
-  canApproveOverBudget: boolean;
-  canApproveEmergency: boolean;
-  status: 'active' | 'inactive';
-}
-
-// Mock Data
-const generateMockVendors = (clientId: string): Vendor[] => [
-  {
-    id: `V-001-${clientId}`,
-    clientId,
-    code: 'V001',
-    name: 'บริษัท ซัพพลายเออร์ไทย จำกัด',
-    nameEn: 'Thai Supplier Co., Ltd.',
-    taxId: '0105551234567',
-    branch: 'สำนักงานใหญ่',
-    address: '123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110',
-    phone: '02-123-4567',
-    email: 'contact@thaisupplier.co.th',
-    contactPerson: 'คุณสมชาย',
-    vendorType: 'supplier',
-    paymentTerms: 30,
-    whtRate: 3,
-    bankName: 'ธนาคารกสิกรไทย',
-    bankAccount: '123-4-56789-0',
-    creditLimit: 500000,
-    status: 'active',
-    createdAt: '2023-01-15',
-    updatedAt: '2024-06-01',
-  },
-  {
-    id: `V-002-${clientId}`,
-    clientId,
-    code: 'V002',
-    name: 'บริษัท บริการดี จำกัด',
-    nameEn: 'Good Service Co., Ltd.',
-    taxId: '0105559876543',
-    address: '456 ถนนพระราม 4 แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110',
-    phone: '02-987-6543',
-    email: 'service@goodservice.co.th',
-    contactPerson: 'คุณสมหญิง',
-    vendorType: 'service',
-    paymentTerms: 15,
-    whtRate: 3,
-    bankName: 'ธนาคารไทยพาณิชย์',
-    bankAccount: '987-6-54321-0',
-    status: 'active',
-    createdAt: '2023-03-20',
-    updatedAt: '2024-05-15',
-  },
-  {
-    id: `V-003-${clientId}`,
-    clientId,
-    code: 'V003',
-    name: 'บริษัท ก่อสร้างมั่นคง จำกัด',
-    taxId: '0105557777777',
-    address: '789 ถนนรัชดาภิเษก แขวงดินแดง เขตดินแดง กรุงเทพฯ 10400',
-    phone: '02-777-7777',
-    contactPerson: 'คุณวิชัย',
-    vendorType: 'contractor',
-    paymentTerms: 45,
-    whtRate: 3,
-    creditLimit: 2000000,
-    status: 'active',
-    createdAt: '2022-06-10',
-    updatedAt: '2024-04-20',
-  },
-];
-
-const generateMockAuthorities = (clientId: string): ApprovalAuthority[] => [
-  {
-    id: `AUTH-001-${clientId}`,
-    clientId,
-    staffId: 'S001',
-    staffName: 'คุณสมศักดิ์ ผู้จัดการ',
-    role: 'Manager',
-    approvalLevel: 3,
-    minAmount: 100001,
-    maxAmount: 1000000,
-    documentTypes: ['PO', 'PR', 'Payment', 'JV'],
-    canApproveOverBudget: true,
-    canApproveEmergency: true,
-    status: 'active',
-  },
-  {
-    id: `AUTH-002-${clientId}`,
-    clientId,
-    staffId: 'S002',
-    staffName: 'คุณสมหญิง หัวหน้าบัญชี',
-    role: 'Senior Accountant',
-    approvalLevel: 2,
-    minAmount: 10001,
-    maxAmount: 100000,
-    documentTypes: ['PO', 'PR', 'Payment'],
-    canApproveOverBudget: false,
-    canApproveEmergency: true,
-    status: 'active',
-  },
-  {
-    id: `AUTH-003-${clientId}`,
-    clientId,
-    staffId: 'S003',
-    staffName: 'คุณวิชัย พนักงานบัญชี',
-    role: 'Junior Accountant',
-    approvalLevel: 1,
-    minAmount: 0,
-    maxAmount: 10000,
-    documentTypes: ['PR'],
-    canApproveOverBudget: false,
-    canApproveEmergency: false,
-    status: 'active',
-  },
-  {
-    id: `AUTH-004-${clientId}`,
-    clientId,
-    staffId: 'S004',
-    staffName: 'คุณประธาน กรรมการผู้จัดการ',
-    role: 'CEO',
-    approvalLevel: 4,
-    minAmount: 1000001,
-    maxAmount: 999999999,
-    documentTypes: ['PO', 'PR', 'Payment', 'JV', 'Contract'],
-    canApproveOverBudget: true,
-    canApproveEmergency: true,
-    status: 'active',
-  },
-];
+// Re-export types from service
+export type { Vendor, ApprovalAuthority } from '../services/masterDataService';
 
 const MasterData: React.FC<Props> = ({ clients }) => {
   // State
@@ -185,13 +30,31 @@ const MasterData: React.FC<Props> = ({ clients }) => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Load mock data
-  React.useEffect(() => {
-    if (selectedClientId) {
-      setVendors(generateMockVendors(selectedClientId));
-      setAuthorities(generateMockAuthorities(selectedClientId));
-    }
+  // Load real data from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!selectedClientId) return;
+
+      setIsLoading(true);
+      try {
+        const [vendorData, authorityData] = await Promise.all([
+          loadVendors(selectedClientId),
+          loadApprovalAuthorities(selectedClientId)
+        ]);
+        setVendors(vendorData);
+        setAuthorities(authorityData);
+      } catch (error) {
+        console.error('Error loading master data:', error);
+        showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, [selectedClientId]);
 
   // Filter vendors
@@ -224,52 +87,103 @@ const MasterData: React.FC<Props> = ({ clients }) => {
   };
 
   // Vendor Actions
-  const handleSaveVendor = (vendor: Vendor) => {
-    if (editingItem) {
-      setVendors(prev => prev.map(v => v.id === vendor.id ? vendor : v));
-    } else {
-      const newVendor = {
+  const handleSaveVendor = async (vendor: Vendor) => {
+    setIsProcessing(true);
+    try {
+      const result = await saveVendorDB({
         ...vendor,
-        id: `V-${Date.now()}`,
         clientId: selectedClientId,
-        createdAt: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString().split('T')[0],
-      };
-      setVendors(prev => [...prev, newVendor]);
+      });
+
+      if (result.success) {
+        if (editingItem) {
+          setVendors(prev => prev.map(v => v.id === vendor.id ? vendor : v));
+        } else {
+          const now = new Date().toISOString();
+          const newVendor = { ...vendor, id: result.id!, clientId: selectedClientId, createdAt: now, updatedAt: now };
+          setVendors(prev => [...prev, newVendor]);
+        }
+        setShowModal(false);
+        setEditingItem(null);
+        showNotification('บันทึกข้อมูลผู้ขายสำเร็จ', 'success');
+      } else {
+        showNotification(result.error || 'เกิดข้อผิดพลาด', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving vendor:', error);
+      showNotification('เกิดข้อผิดพลาดในการบันทึก', 'error');
+    } finally {
+      setIsProcessing(false);
     }
-    setShowModal(false);
-    setEditingItem(null);
-    showNotification('บันทึกข้อมูลผู้ขายสำเร็จ', 'success');
   };
 
-  const handleDeleteVendor = (id: string) => {
+  const handleDeleteVendor = async (id: string) => {
     if (window.confirm('ต้องการลบผู้ขายนี้ใช่หรือไม่?')) {
-      setVendors(prev => prev.filter(v => v.id !== id));
-      showNotification('ลบผู้ขายสำเร็จ', 'success');
+      setIsProcessing(true);
+      try {
+        const result = await deleteVendorDB(id);
+        if (result.success) {
+          setVendors(prev => prev.filter(v => v.id !== id));
+          showNotification('ลบผู้ขายสำเร็จ', 'success');
+        } else {
+          showNotification(result.error || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting vendor:', error);
+        showNotification('เกิดข้อผิดพลาดในการลบ', 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
   // Authority Actions
-  const handleSaveAuthority = (auth: ApprovalAuthority) => {
-    if (editingItem) {
-      setAuthorities(prev => prev.map(a => a.id === auth.id ? auth : a));
-    } else {
-      const newAuth = {
+  const handleSaveAuthority = async (auth: ApprovalAuthority) => {
+    setIsProcessing(true);
+    try {
+      const result = await saveAuthorityDB({
         ...auth,
-        id: `AUTH-${Date.now()}`,
         clientId: selectedClientId,
-      };
-      setAuthorities(prev => [...prev, newAuth]);
+      });
+
+      if (result.success) {
+        if (editingItem) {
+          setAuthorities(prev => prev.map(a => a.id === auth.id ? auth : a));
+        } else {
+          const newAuth = { ...auth, id: result.id!, clientId: selectedClientId };
+          setAuthorities(prev => [...prev, newAuth]);
+        }
+        setShowModal(false);
+        setEditingItem(null);
+        showNotification('บันทึกข้อมูลอำนาจอนุมัติสำเร็จ', 'success');
+      } else {
+        showNotification(result.error || 'เกิดข้อผิดพลาด', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving authority:', error);
+      showNotification('เกิดข้อผิดพลาดในการบันทึก', 'error');
+    } finally {
+      setIsProcessing(false);
     }
-    setShowModal(false);
-    setEditingItem(null);
-    showNotification('บันทึกข้อมูลอำนาจอนุมัติสำเร็จ', 'success');
   };
 
-  const handleDeleteAuthority = (id: string) => {
+  const handleDeleteAuthority = async (id: string) => {
     if (window.confirm('ต้องการลบข้อมูลอำนาจอนุมัตินี้ใช่หรือไม่?')) {
-      setAuthorities(prev => prev.filter(a => a.id !== id));
-      showNotification('ลบข้อมูลอำนาจอนุมัติสำเร็จ', 'success');
+      setIsProcessing(true);
+      try {
+        const result = await deleteAuthorityDB(id);
+        if (result.success) {
+          setAuthorities(prev => prev.filter(a => a.id !== id));
+          showNotification('ลบข้อมูลอำนาจอนุมัติสำเร็จ', 'success');
+        } else {
+          showNotification(result.error || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting authority:', error);
+        showNotification('เกิดข้อผิดพลาดในการลบ', 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -300,9 +214,8 @@ const MasterData: React.FC<Props> = ({ clients }) => {
     <div className="animate-in fade-in duration-500 p-6">
       {/* Notification */}
       {notification && (
-        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 ${
-          notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
-        }`}>
+        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 ${notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
+          }`}>
           {notification.type === 'success' ? <CheckCircle size={20} className="text-emerald-500" /> : <AlertTriangle size={20} className="text-red-500" />}
           <span className="font-semibold text-sm">{notification.message}</span>
         </div>
@@ -342,11 +255,10 @@ const MasterData: React.FC<Props> = ({ clients }) => {
           <button
             key={tab.id}
             onClick={() => { setActiveTab(tab.id as any); setSearchTerm(''); setFilterStatus('all'); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id
-                ? 'bg-white text-blue-700 shadow-sm'
-                : 'text-slate-600 hover:text-slate-800'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-slate-600 hover:text-slate-800'
+              }`}
           >
             <tab.icon size={18} />
             {tab.label}
@@ -393,7 +305,21 @@ const MasterData: React.FC<Props> = ({ clients }) => {
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
+              <button
+                onClick={() => {
+                  const headers = ['รหัส', 'ชื่อ', 'เลขประจำตัว', 'ประเภท', 'เครดิต', 'วงเงิน', 'สถานะ'];
+                  const rows = filteredVendors.map(v => [v.code, v.name, v.taxId, v.vendorType, v.paymentTerms, v.creditLimit || 0, v.status]);
+                  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'vendors_export.csv';
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+              >
                 <Download size={18} />
                 Export
               </button>
@@ -550,20 +476,18 @@ const MasterData: React.FC<Props> = ({ clients }) => {
                   return (
                     <div key={level} className="flex items-start gap-4">
                       <div className="w-24 shrink-0">
-                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
-                          level === 4 ? 'bg-purple-100 text-purple-700' :
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${level === 4 ? 'bg-purple-100 text-purple-700' :
                           level === 3 ? 'bg-blue-100 text-blue-700' :
-                          level === 2 ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-slate-100 text-slate-600'
-                        }`}>
+                            level === 2 ? 'bg-emerald-100 text-emerald-700' :
+                              'bg-slate-100 text-slate-600'
+                          }`}>
                           L{level}
                         </span>
                       </div>
                       <div className="flex-1 flex flex-wrap gap-3">
                         {levelAuthorities.map(auth => (
-                          <div key={auth.id} className={`p-3 rounded-xl border ${
-                            auth.status === 'active' ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'
-                          }`}>
+                          <div key={auth.id} className={`p-3 rounded-xl border ${auth.status === 'active' ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-60'
+                            }`}>
                             <div className="flex items-center gap-2 mb-2">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
                                 {auth.staffName.charAt(0)}
@@ -636,12 +560,11 @@ const MasterData: React.FC<Props> = ({ clients }) => {
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600">{auth.role}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                        auth.approvalLevel === 4 ? 'bg-purple-100 text-purple-700' :
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${auth.approvalLevel === 4 ? 'bg-purple-100 text-purple-700' :
                         auth.approvalLevel === 3 ? 'bg-blue-100 text-blue-700' :
-                        auth.approvalLevel === 2 ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
+                          auth.approvalLevel === 2 ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-slate-100 text-slate-600'
+                        }`}>
                         {auth.approvalLevel}
                       </span>
                     </td>
@@ -665,9 +588,8 @@ const MasterData: React.FC<Props> = ({ clients }) => {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                        auth.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                      }`}>
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${auth.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                        }`}>
                         {auth.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
                       </span>
                     </td>
@@ -1041,11 +963,10 @@ const AuthorityModal: React.FC<AuthorityModalProps> = ({ authority, onSave, onCl
                   key={type}
                   type="button"
                   onClick={() => toggleDocType(type)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    formData.documentTypes?.includes(type)
-                      ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                      : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
-                  }`}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${formData.documentTypes?.includes(type)
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                    : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
+                    }`}
                 >
                   {type}
                 </button>

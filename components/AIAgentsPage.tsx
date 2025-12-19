@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bot, FileText, Calculator, Building, CalendarCheck, Users, Bell,
   Play, Pause, Settings, Activity, CheckCircle2, AlertCircle, Clock,
-  TrendingUp, Zap, ChevronRight, Shield, BarChart3, RefreshCw
+  TrendingUp, Zap, ChevronRight, Shield, BarChart3, RefreshCw, Loader2
 } from 'lucide-react';
 import { DEFAULT_AGENT_DEFINITIONS, AgentDefinition, AgentType, AgentMetrics, AgentConfig } from '../types/agents';
+import { loadAllAgentMetrics, getTodaySummary } from '../services/aiMetricsService';
 
 interface Props {
   onConfigureAgent?: (agentType: AgentType) => void;
@@ -19,16 +20,42 @@ const AIAgentsPage: React.FC<Props> = ({ onConfigureAgent }) => {
     });
     return configs;
   });
+  const [agentMetrics, setAgentMetrics] = useState<Record<AgentType, AgentMetrics> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock metrics data
-  const mockMetrics: Record<AgentType, AgentMetrics> = {
-    orchestrator: { agentType: 'orchestrator', period: 'day', totalExecutions: 0, successCount: 0, failureCount: 0, escalationCount: 0, avgProcessingTimeMs: 0, avgConfidence: 0, costSavingsThb: 0, timeSavedMinutes: 0 },
-    document: { agentType: 'document', period: 'day', totalExecutions: 156, successCount: 142, failureCount: 3, escalationCount: 11, avgProcessingTimeMs: 2500, avgConfidence: 92, costSavingsThb: 15600, timeSavedMinutes: 780 },
-    tax: { agentType: 'tax', period: 'day', totalExecutions: 45, successCount: 43, failureCount: 0, escalationCount: 2, avgProcessingTimeMs: 5000, avgConfidence: 95, costSavingsThb: 9000, timeSavedMinutes: 225 },
-    reconciliation: { agentType: 'reconciliation', period: 'day', totalExecutions: 28, successCount: 25, failureCount: 1, escalationCount: 2, avgProcessingTimeMs: 8000, avgConfidence: 88, costSavingsThb: 5600, timeSavedMinutes: 280 },
-    closing: { agentType: 'closing', period: 'day', totalExecutions: 12, successCount: 11, failureCount: 0, escalationCount: 1, avgProcessingTimeMs: 15000, avgConfidence: 94, costSavingsThb: 3600, timeSavedMinutes: 120 },
-    task_assignment: { agentType: 'task_assignment', period: 'day', totalExecutions: 89, successCount: 87, failureCount: 0, escalationCount: 2, avgProcessingTimeMs: 500, avgConfidence: 85, costSavingsThb: 4450, timeSavedMinutes: 89 },
-    notification: { agentType: 'notification', period: 'day', totalExecutions: 234, successCount: 232, failureCount: 2, escalationCount: 0, avgProcessingTimeMs: 200, avgConfidence: 99, costSavingsThb: 2340, timeSavedMinutes: 117 }
+  // Load metrics from Firestore
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      setIsLoading(true);
+      try {
+        const metrics = await loadAllAgentMetrics('day');
+        setAgentMetrics(metrics);
+      } catch (error) {
+        console.error('Error loading agent metrics:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMetrics();
+  }, []);
+
+  // Default metrics for when no data available
+  const defaultMetrics: AgentMetrics = {
+    agentType: 'document',
+    period: 'day',
+    totalExecutions: 0,
+    successCount: 0,
+    failureCount: 0,
+    escalationCount: 0,
+    avgProcessingTimeMs: 0,
+    avgConfidence: 0,
+    costSavingsThb: 0,
+    timeSavedMinutes: 0
+  };
+
+  const getMetrics = (type: AgentType): AgentMetrics => {
+    return agentMetrics?.[type] || { ...defaultMetrics, agentType: type };
   };
 
   const getAgentIcon = (type: AgentType) => {
@@ -54,11 +81,12 @@ const AIAgentsPage: React.FC<Props> = ({ onConfigureAgent }) => {
     }));
   };
 
-  // Calculate totals
-  const totalExecutions = Object.values(mockMetrics).reduce((acc, m) => acc + m.totalExecutions, 0);
-  const totalSuccess = Object.values(mockMetrics).reduce((acc, m) => acc + m.successCount, 0);
-  const totalSavings = Object.values(mockMetrics).reduce((acc, m) => acc + m.costSavingsThb, 0);
-  const totalTimeSaved = Object.values(mockMetrics).reduce((acc, m) => acc + m.timeSavedMinutes, 0);
+  // Calculate totals from real metrics
+  const metricsValues = agentMetrics ? Object.values(agentMetrics) : [];
+  const totalExecutions = metricsValues.reduce((acc, m) => acc + m.totalExecutions, 0);
+  const totalSuccess = metricsValues.reduce((acc, m) => acc + m.successCount, 0);
+  const totalSavings = metricsValues.reduce((acc, m) => acc + m.costSavingsThb, 0);
+  const totalTimeSaved = metricsValues.reduce((acc, m) => acc + m.timeSavedMinutes, 0);
   const successRate = totalExecutions > 0 ? (totalSuccess / totalExecutions * 100).toFixed(1) : '0';
 
   return (
@@ -140,16 +168,15 @@ const AIAgentsPage: React.FC<Props> = ({ onConfigureAgent }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {DEFAULT_AGENT_DEFINITIONS.map((agent) => {
             const Icon = getAgentIcon(agent.type);
-            const metrics = mockMetrics[agent.type];
+            const metrics = getMetrics(agent.type);
             const config = agentConfigs[agent.id];
             const isEnabled = config?.enabled ?? agent.enabled;
 
             return (
               <div
                 key={agent.id}
-                className={`bg-white rounded-xl border p-5 cursor-pointer transition-all hover:shadow-md ${
-                  selectedAgent?.id === agent.id ? 'border-purple-300 shadow-md ring-2 ring-purple-100' : 'border-slate-200'
-                } ${!isEnabled ? 'opacity-60' : ''}`}
+                className={`bg-white rounded-xl border p-5 cursor-pointer transition-all hover:shadow-md ${selectedAgent?.id === agent.id ? 'border-purple-300 shadow-md ring-2 ring-purple-100' : 'border-slate-200'
+                  } ${!isEnabled ? 'opacity-60' : ''}`}
                 onClick={() => setSelectedAgent(agent)}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -171,9 +198,8 @@ const AIAgentsPage: React.FC<Props> = ({ onConfigureAgent }) => {
                   </span>
                   <button
                     onClick={(e) => { e.stopPropagation(); toggleAgent(agent.id); }}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      isEnabled ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                    }`}
+                    className={`p-1.5 rounded-lg transition-colors ${isEnabled ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                      }`}
                   >
                     {isEnabled ? <Pause size={16} /> : <Play size={16} />}
                   </button>
@@ -253,19 +279,19 @@ const AIAgentsPage: React.FC<Props> = ({ onConfigureAgent }) => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-500">Total Runs</span>
-                  <span className="font-semibold">{mockMetrics[selectedAgent.type].totalExecutions}</span>
+                  <span className="font-semibold">{getMetrics(selectedAgent.type).totalExecutions}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-500">Success</span>
-                  <span className="font-semibold text-emerald-600">{mockMetrics[selectedAgent.type].successCount}</span>
+                  <span className="font-semibold text-emerald-600">{getMetrics(selectedAgent.type).successCount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-500">Escalated</span>
-                  <span className="font-semibold text-amber-600">{mockMetrics[selectedAgent.type].escalationCount}</span>
+                  <span className="font-semibold text-amber-600">{getMetrics(selectedAgent.type).escalationCount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-slate-500">Avg. Time</span>
-                  <span className="font-semibold">{(mockMetrics[selectedAgent.type].avgProcessingTimeMs / 1000).toFixed(1)}s</span>
+                  <span className="font-semibold">{(getMetrics(selectedAgent.type).avgProcessingTimeMs / 1000).toFixed(1)}s</span>
                 </div>
               </div>
             </div>

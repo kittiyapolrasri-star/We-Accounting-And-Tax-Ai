@@ -291,7 +291,7 @@ export interface ActivityLog {
   timestamp: string; // ISO String
   user_id: string;
   user_name: string;
-  action: 'UPLOAD' | 'APPROVE' | 'POST_GL' | 'CLOSE_PERIOD' | 'LOGIN' | 'RECONCILE' | 'ADD_ASSET' | 'CREATE_TASK' | 'UPDATE_TASK' | 'DELETE_TASK';
+  action: 'UPLOAD' | 'APPROVE' | 'POST_GL' | 'CLOSE_PERIOD' | 'LOGIN' | 'RECONCILE' | 'ADD_ASSET' | 'CREATE_TASK' | 'UPDATE_TASK' | 'DELETE_TASK' | 'IMPORT';
   details: string;
   entity_id?: string; // Link to specific object
   status?: 'success' | 'warning' | 'error';

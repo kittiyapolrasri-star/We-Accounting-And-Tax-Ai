@@ -1,13 +1,15 @@
 import React from 'react';
 import { Client } from '../types';
-import { Building2, MapPin, Activity, FileText, MoreHorizontal, Plus } from 'lucide-react';
+import { Building2, MapPin, Activity, FileText, MoreHorizontal, Plus, Download, FileSpreadsheet } from 'lucide-react';
+import { exportClientsExcel } from '../services/comprehensiveExport';
 
 interface Props {
   clients: Client[];
   onSelectClient?: (client: Client) => void;
+  onAddClient?: () => void;
 }
 
-const ClientDirectory: React.FC<Props> = ({ clients, onSelectClient }) => {
+const ClientDirectory: React.FC<Props> = ({ clients, onSelectClient, onAddClient }) => {
   return (
     <div className="h-full flex flex-col bg-slate-50">
       {/* Clean Minimal Header */}
@@ -22,10 +24,22 @@ const ClientDirectory: React.FC<Props> = ({ clients, onSelectClient }) => {
               <p className="text-sm text-slate-500">จัดการข้อมูลบริษัทและรอบระยะเวลาบัญชี</p>
             </div>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-            <Plus size={18} />
-            เพิ่มลูกค้าใหม่
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => exportClientsExcel(clients)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <FileSpreadsheet size={18} />
+              Export Excel
+            </button>
+            <button
+              onClick={onAddClient}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              เพิ่มลูกค้าใหม่
+            </button>
+          </div>
         </div>
       </div>
 

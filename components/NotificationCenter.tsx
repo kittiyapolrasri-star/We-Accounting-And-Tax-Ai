@@ -14,43 +14,15 @@ import {
     User, Calendar, Settings, Trash2, RefreshCw, Filter,
     ChevronRight, MessageSquare, Building2, DollarSign, Zap
 } from 'lucide-react';
+import {
+    AppNotification, NotificationType,
+    loadNotifications, markAsRead as markAsReadDB, markAllAsRead as markAllAsReadDB,
+    deleteNotification as deleteNotificationDB, clearAllNotifications, subscribeToNotifications
+} from '../services/notificationService';
+import { useAuth } from '../contexts/AuthContext';
 
-// ============================================================================
-// TYPES
-// ============================================================================
-
-export type NotificationType =
-    | 'task_assigned'
-    | 'task_completed'
-    | 'task_overdue'
-    | 'deadline_reminder'
-    | 'document_uploaded'
-    | 'document_approved'
-    | 'document_rejected'
-    | 'tax_deadline'
-    | 'client_update'
-    | 'system_alert'
-    | 'mention';
-
-export interface AppNotification {
-    id: string;
-    type: NotificationType;
-    title: string;
-    message: string;
-    icon?: string;
-    timestamp: string;
-    read: boolean;
-    priority: 'low' | 'normal' | 'high' | 'urgent';
-    actionUrl?: string;
-    actionLabel?: string;
-    metadata?: {
-        taskId?: string;
-        documentId?: string;
-        clientId?: string;
-        userId?: string;
-        [key: string]: any;
-    };
-}
+// Re-export types from service
+export type { NotificationType, AppNotification } from '../services/notificationService';
 
 interface Props {
     isOpen: boolean;
@@ -59,106 +31,41 @@ interface Props {
 }
 
 // ============================================================================
-// MOCK DATA (In production, this would come from Firebase)
-// ============================================================================
-
-const generateMockNotifications = (): AppNotification[] => {
-    const now = new Date();
-
-    return [
-        {
-            id: 'notif-1',
-            type: 'task_assigned',
-            title: 'งานใหม่: ตรวจสอบเอกสาร',
-            message: 'คุณได้รับมอบหมายงาน "ตรวจสอบเอกสาร - บริษัท ABC"',
-            timestamp: new Date(now.getTime() - 5 * 60000).toISOString(), // 5 mins ago
-            read: false,
-            priority: 'high',
-            actionLabel: 'ดูงาน',
-            metadata: { taskId: 'TASK-001', clientId: 'client-1' }
-        },
-        {
-            id: 'notif-2',
-            type: 'deadline_reminder',
-            title: 'Deadline ใกล้ถึง',
-            message: 'งาน "ยื่น ภ.พ.30 - Tech Corp" ครบกำหนดใน 2 วัน',
-            timestamp: new Date(now.getTime() - 30 * 60000).toISOString(), // 30 mins ago
-            read: false,
-            priority: 'urgent',
-            actionLabel: 'ไปที่งาน',
-            metadata: { taskId: 'TASK-002' }
-        },
-        {
-            id: 'notif-3',
-            type: 'document_approved',
-            title: 'เอกสารได้รับการอนุมัติ',
-            message: 'เอกสาร INV-2024-001 ของ XYZ Ltd. ได้รับการอนุมัติแล้ว',
-            timestamp: new Date(now.getTime() - 2 * 3600000).toISOString(), // 2 hours ago
-            read: false,
-            priority: 'normal',
-            metadata: { documentId: 'DOC-001' }
-        },
-        {
-            id: 'notif-4',
-            type: 'tax_deadline',
-            title: 'กำหนดยื่นภาษี',
-            message: 'กำหนดยื่น ภ.พ.30 ภายในวันที่ 15 ของเดือน (เหลืออีก 5 วัน)',
-            timestamp: new Date(now.getTime() - 6 * 3600000).toISOString(), // 6 hours ago
-            read: true,
-            priority: 'high'
-        },
-        {
-            id: 'notif-5',
-            type: 'mention',
-            title: '@คุณ ถูกกล่าวถึง',
-            message: 'คุณ สมชาย กล่าวถึงคุณใน comment ของงาน "ปิดบัญชีเดือน ม.ค."',
-            timestamp: new Date(now.getTime() - 1 * 86400000).toISOString(), // 1 day ago
-            read: true,
-            priority: 'normal',
-            metadata: { taskId: 'TASK-003', userId: 'user-1' }
-        },
-        {
-            id: 'notif-6',
-            type: 'task_completed',
-            title: 'งานเสร็จสมบูรณ์',
-            message: 'งาน "กระทบยอดธนาคาร - ABC Corp" เสร็จสมบูรณ์แล้ว',
-            timestamp: new Date(now.getTime() - 2 * 86400000).toISOString(), // 2 days ago
-            read: true,
-            priority: 'low',
-            metadata: { taskId: 'TASK-004' }
-        },
-        {
-            id: 'notif-7',
-            type: 'system_alert',
-            title: 'อัปเดตระบบ',
-            message: 'ระบบจะมีการ maintenance ในวันเสาร์ที่ 20 เวลา 02:00-04:00 น.',
-            timestamp: new Date(now.getTime() - 3 * 86400000).toISOString(), // 3 days ago
-            read: true,
-            priority: 'low'
-        }
-    ];
-};
-
-// ============================================================================
 // NOTIFICATION CENTER COMPONENT
 // ============================================================================
 
 const NotificationCenter: React.FC<Props> = ({ isOpen, onClose, onNotificationClick }) => {
+    const { user } = useAuth();
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [filter, setFilter] = useState<'all' | 'unread'>('all');
     const [loading, setLoading] = useState(false);
 
-    // Load notifications
+    // Load notifications from Firestore
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && user) {
             setLoading(true);
-            // Simulate API call
-            setTimeout(() => {
-                setNotifications(generateMockNotifications());
+
+            // Subscribe to real-time notifications
+            const unsubscribe = subscribeToNotifications(user.uid, (notifs) => {
+                setNotifications(notifs);
                 setLoading(false);
-            }, 300);
+            });
+
+            // If subscription fails, load manually
+            if (!unsubscribe) {
+                loadNotifications(user.uid)
+                    .then(notifs => {
+                        setNotifications(notifs);
+                        setLoading(false);
+                    })
+                    .catch(() => setLoading(false));
+            }
+
+            return () => {
+                if (unsubscribe) unsubscribe();
+            };
         }
-    }, [isOpen]);
+    }, [isOpen, user]);
 
     // Filter notifications
     const filteredNotifications = useMemo(() => {
@@ -175,24 +82,36 @@ const NotificationCenter: React.FC<Props> = ({ isOpen, onClose, onNotificationCl
     );
 
     // Mark as read
-    const markAsRead = (id: string) => {
+    const handleMarkAsRead = async (id: string) => {
+        if (user) {
+            await markAsReadDB(id);
+        }
         setNotifications(prev =>
             prev.map(n => n.id === id ? { ...n, read: true } : n)
         );
     };
 
     // Mark all as read
-    const markAllAsRead = () => {
+    const handleMarkAllAsRead = async () => {
+        if (user) {
+            await markAllAsReadDB(user.uid);
+        }
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     };
 
     // Delete notification
-    const deleteNotification = (id: string) => {
+    const handleDeleteNotification = async (id: string) => {
+        if (user) {
+            await deleteNotificationDB(id);
+        }
         setNotifications(prev => prev.filter(n => n.id !== id));
     };
 
     // Clear all
-    const clearAll = () => {
+    const handleClearAll = async () => {
+        if (user) {
+            await clearAllNotifications(user.uid);
+        }
         setNotifications([]);
     };
 
@@ -286,8 +205,8 @@ const NotificationCenter: React.FC<Props> = ({ isOpen, onClose, onNotificationCl
                             <button
                                 onClick={() => setFilter('all')}
                                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${filter === 'all'
-                                        ? 'bg-white/30 font-medium'
-                                        : 'hover:bg-white/10'
+                                    ? 'bg-white/30 font-medium'
+                                    : 'hover:bg-white/10'
                                     }`}
                             >
                                 ทั้งหมด
@@ -295,8 +214,8 @@ const NotificationCenter: React.FC<Props> = ({ isOpen, onClose, onNotificationCl
                             <button
                                 onClick={() => setFilter('unread')}
                                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${filter === 'unread'
-                                        ? 'bg-white/30 font-medium'
-                                        : 'hover:bg-white/10'
+                                    ? 'bg-white/30 font-medium'
+                                    : 'hover:bg-white/10'
                                     }`}
                             >
                                 ยังไม่อ่าน
@@ -305,14 +224,14 @@ const NotificationCenter: React.FC<Props> = ({ isOpen, onClose, onNotificationCl
 
                         <div className="flex gap-1">
                             <button
-                                onClick={markAllAsRead}
+                                onClick={handleMarkAllAsRead}
                                 className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
                                 title="อ่านทั้งหมด"
                             >
                                 <CheckCheck size={18} />
                             </button>
                             <button
-                                onClick={clearAll}
+                                onClick={handleClearAll}
                                 className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
                                 title="ลบทั้งหมด"
                             >
@@ -341,7 +260,7 @@ const NotificationCenter: React.FC<Props> = ({ isOpen, onClose, onNotificationCl
                                     className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer border-l-4 ${getPriorityStyle(notification.priority)
                                         } ${!notification.read ? 'bg-blue-50/50' : ''}`}
                                     onClick={() => {
-                                        markAsRead(notification.id);
+                                        handleMarkAsRead(notification.id);
                                         onNotificationClick?.(notification);
                                     }}
                                 >
@@ -383,7 +302,7 @@ const NotificationCenter: React.FC<Props> = ({ isOpen, onClose, onNotificationCl
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    deleteNotification(notification.id);
+                                                    handleDeleteNotification(notification.id);
                                                 }}
                                                 className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                                             >

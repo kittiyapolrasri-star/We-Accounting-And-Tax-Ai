@@ -94,8 +94,12 @@ const Login: React.FC<Props> = ({ onLoginSuccess }) => {
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         {/* Logo & Title */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-2xl">WE</span>
+          <div className="flex justify-center mb-4">
+            <img
+              src="/icon/S__111992841_0.jpg"
+              alt="Company Logo"
+              className="w-20 h-20 object-contain rounded-2xl shadow-md"
+            />
           </div>
           <h1 className="text-2xl font-bold text-slate-800">WE Accounting & Tax AI</h1>
           <p className="text-slate-500 mt-2">

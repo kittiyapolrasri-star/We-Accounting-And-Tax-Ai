@@ -252,7 +252,7 @@ export const validateGLPosting = async (request: GLPostingRequest): Promise<Vali
   // 4. Check Period Lock
   try {
     const client = await databaseService.getClientById(request.clientId);
-    if (client && client.current_workflow.is_locked) {
+    if (client && client.current_workflow?.is_locked) {
       errors.push({
         code: 'PERIOD_LOCKED',
         message: `Period is locked for client ${client.name}`,
@@ -357,12 +357,12 @@ export const canEditPeriod = async (clientId: string, periodMonth?: string): Pro
     if (!client) return false;
 
     // Check if current workflow is locked
-    if (client.current_workflow.is_locked) {
+    if (client.current_workflow?.is_locked) {
       return false;
     }
 
     // If specific period month provided, check if it matches current workflow
-    if (periodMonth && client.current_workflow.month !== periodMonth) {
+    if (periodMonth && client.current_workflow?.month !== periodMonth) {
       // Different period - assume it's a past period which should be locked
       return false;
     }

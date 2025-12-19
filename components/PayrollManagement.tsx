@@ -3,91 +3,24 @@ import {
   Users, Plus, Search, FileText, Calculator, DollarSign, Calendar,
   CheckCircle2, AlertCircle, Download, Printer, ChevronDown, ChevronUp,
   Edit2, Trash2, Save, X, Building, CreditCard, Briefcase, Clock,
-  TrendingUp, UserPlus, FileSpreadsheet, Send, BookOpen, Filter
+  TrendingUp, UserPlus, FileSpreadsheet, Send, BookOpen, Filter, Loader2
 } from 'lucide-react';
 import {
   Employee, SalaryStructure, PaySlip, calculatePaySlip, calculateSSO,
   formatThaiCurrency, PIT_BRACKETS, TAX_DEDUCTIONS, SSO_RATES
 } from '../services/payroll';
 import { PostedGLEntry, Client } from '../types';
+import { PremiumPDFGenerator, CompanyInfo } from '../services/pdfService';
+import {
+  loadEmployees, saveEmployee as saveEmployeeDB, deleteEmployee as deleteEmployeeDB,
+  loadAllSalaryStructures, saveSalaryStructure,
+  loadPayslips, savePayslipsBatch, updatePayslipStatus
+} from '../services/payrollDatabase';
 
 interface Props {
   clients: Client[];
   onPostJournal: (entries: PostedGLEntry[]) => Promise<void>;
 }
-
-// Mock data for demo
-const generateMockEmployees = (clientId: string): Employee[] => [
-  {
-    id: `EMP-001-${clientId}`,
-    clientId,
-    employeeCode: 'EMP001',
-    titleTh: 'นาย',
-    firstNameTh: 'สมชาย',
-    lastNameTh: 'ใจดี',
-    titleEn: 'Mr.',
-    firstNameEn: 'Somchai',
-    lastNameEn: 'Jaidee',
-    nationalId: '1-1234-56789-01-2',
-    taxId: '1234567890123',
-    dateOfBirth: '1985-05-15',
-    startDate: '2020-01-15',
-    position: 'ผู้จัดการฝ่ายบัญชี',
-    department: 'บัญชี',
-    bankAccount: '123-4-56789-0',
-    bankName: 'ธนาคารกสิกรไทย',
-    status: 'active',
-  },
-  {
-    id: `EMP-002-${clientId}`,
-    clientId,
-    employeeCode: 'EMP002',
-    titleTh: 'นางสาว',
-    firstNameTh: 'สมหญิง',
-    lastNameTh: 'รักงาน',
-    titleEn: 'Ms.',
-    firstNameEn: 'Somying',
-    lastNameEn: 'Rukngarn',
-    nationalId: '1-9876-54321-01-3',
-    taxId: '9876543210987',
-    dateOfBirth: '1990-08-20',
-    startDate: '2021-06-01',
-    position: 'พนักงานบัญชี',
-    department: 'บัญชี',
-    bankAccount: '987-6-54321-0',
-    bankName: 'ธนาคารไทยพาณิชย์',
-    status: 'active',
-  },
-  {
-    id: `EMP-003-${clientId}`,
-    clientId,
-    employeeCode: 'EMP003',
-    titleTh: 'นาย',
-    firstNameTh: 'วิชัย',
-    lastNameTh: 'มานะ',
-    titleEn: 'Mr.',
-    firstNameEn: 'Wichai',
-    lastNameEn: 'Mana',
-    nationalId: '1-5555-55555-55-5',
-    taxId: '5555555555555',
-    dateOfBirth: '1988-03-10',
-    startDate: '2019-02-01',
-    position: 'ผู้จัดการฝ่ายขาย',
-    department: 'ขาย',
-    bankAccount: '555-5-55555-5',
-    bankName: 'ธนาคารกรุงเทพ',
-    status: 'active',
-  },
-];
-
-const generateMockSalary = (employeeCode: string): SalaryStructure => {
-  const salaries: Record<string, SalaryStructure> = {
-    'EMP001': { baseSalary: 65000, positionAllowance: 10000, transportAllowance: 3000 },
-    'EMP002': { baseSalary: 35000, positionAllowance: 0, transportAllowance: 2000 },
-    'EMP003': { baseSalary: 55000, positionAllowance: 8000, transportAllowance: 3000, commission: 15000 },
-  };
-  return salaries[employeeCode] || { baseSalary: 25000 };
-};
 
 const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
   // State
@@ -105,20 +38,37 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
   const [expandedPayslip, setExpandedPayslip] = useState<string | null>(null);
   const [salaryData, setSalaryData] = useState<Record<string, SalaryStructure>>({});
 
-  // Load mock data
-  useEffect(() => {
-    if (selectedClientId) {
-      const mockEmps = generateMockEmployees(selectedClientId);
-      setEmployees(mockEmps);
+  const [isLoading, setIsLoading] = useState(false);
 
-      // Generate salary data
-      const salaries: Record<string, SalaryStructure> = {};
-      mockEmps.forEach(emp => {
-        salaries[emp.id] = generateMockSalary(emp.employeeCode);
-      });
-      setSalaryData(salaries);
-    }
-  }, [selectedClientId]);
+  // Load real data from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!selectedClientId) return;
+
+      setIsLoading(true);
+      try {
+        // Load employees from Firestore
+        const emps = await loadEmployees(selectedClientId);
+        setEmployees(emps);
+
+        // Load salary structures from Firestore
+        const salaries = await loadAllSalaryStructures(selectedClientId);
+        setSalaryData(salaries);
+
+        // Load payslips from Firestore
+        const period = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
+        const slips = await loadPayslips(selectedClientId, period);
+        setPayslips(slips);
+      } catch (error) {
+        console.error('Error loading payroll data:', error);
+        showNotification('เกิดข้อผิดพลาดในการโหลดข้อมูล', 'error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedClientId, selectedMonth, selectedYear]);
 
   // Filter employees
   const filteredEmployees = useMemo(() => {
@@ -248,13 +198,13 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
       draftPayslips.forEach(ps => {
         totalSalary += ps.earnings.baseSalary || 0;
         totalAllowances += (ps.earnings.positionAllowance || 0) +
-                          (ps.earnings.housingAllowance || 0) +
-                          (ps.earnings.transportAllowance || 0) +
-                          (ps.earnings.mealAllowance || 0) +
-                          (ps.earnings.otherAllowance || 0) +
-                          (ps.earnings.commission || 0) +
-                          (ps.earnings.bonus || 0) +
-                          (ps.earnings.overtime || 0);
+          (ps.earnings.housingAllowance || 0) +
+          (ps.earnings.transportAllowance || 0) +
+          (ps.earnings.mealAllowance || 0) +
+          (ps.earnings.otherAllowance || 0) +
+          (ps.earnings.commission || 0) +
+          (ps.earnings.bonus || 0) +
+          (ps.earnings.overtime || 0);
         totalWht += ps.wht;
         totalSso += ps.deductions.sso;
         totalProvidentFund += ps.deductions.providentFund || 0;
@@ -394,31 +344,59 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
   };
 
   // Add/Edit employee
-  const handleSaveEmployee = (employee: Employee) => {
-    if (editingEmployee) {
-      setEmployees(prev => prev.map(e => e.id === employee.id ? employee : e));
-    } else {
-      const newEmployee = {
+  const handleSaveEmployee = async (employee: Employee) => {
+    setIsProcessing(true);
+    try {
+      const result = await saveEmployeeDB({
         ...employee,
-        id: `EMP-${Date.now()}`,
         clientId: selectedClientId,
-      };
-      setEmployees(prev => [...prev, newEmployee]);
-      setSalaryData(prev => ({
-        ...prev,
-        [newEmployee.id]: { baseSalary: 25000 }
-      }));
+      });
+
+      if (result.success) {
+        if (editingEmployee) {
+          setEmployees(prev => prev.map(e => e.id === employee.id ? employee : e));
+        } else {
+          const newEmployee = { ...employee, id: result.id!, clientId: selectedClientId };
+          setEmployees(prev => [...prev, newEmployee]);
+          // Save default salary structure
+          await saveSalaryStructure(result.id!, selectedClientId, { baseSalary: 25000 });
+          setSalaryData(prev => ({
+            ...prev,
+            [result.id!]: { baseSalary: 25000 }
+          }));
+        }
+        setShowEmployeeModal(false);
+        setEditingEmployee(null);
+        showNotification('บันทึกข้อมูลพนักงานสำเร็จ', 'success');
+      } else {
+        showNotification(result.error || 'เกิดข้อผิดพลาด', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving employee:', error);
+      showNotification('เกิดข้อผิดพลาดในการบันทึก', 'error');
+    } finally {
+      setIsProcessing(false);
     }
-    setShowEmployeeModal(false);
-    setEditingEmployee(null);
-    showNotification('บันทึกข้อมูลพนักงานสำเร็จ', 'success');
   };
 
   // Delete employee
-  const handleDeleteEmployee = (empId: string) => {
+  const handleDeleteEmployee = async (empId: string) => {
     if (window.confirm('ต้องการลบพนักงานนี้ใช่หรือไม่?')) {
-      setEmployees(prev => prev.filter(e => e.id !== empId));
-      showNotification('ลบพนักงานสำเร็จ', 'success');
+      setIsProcessing(true);
+      try {
+        const result = await deleteEmployeeDB(empId);
+        if (result.success) {
+          setEmployees(prev => prev.filter(e => e.id !== empId));
+          showNotification('ลบพนักงานสำเร็จ', 'success');
+        } else {
+          showNotification(result.error || 'เกิดข้อผิดพลาด', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting employee:', error);
+        showNotification('เกิดข้อผิดพลาดในการลบ', 'error');
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -432,9 +410,8 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
     <div className="animate-in fade-in duration-500 p-6">
       {/* Notification */}
       {notification && (
-        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 ${
-          notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
-        }`}>
+        <div className={`fixed top-6 right-6 z-50 px-6 py-3 rounded-xl shadow-lg border flex items-center gap-3 animate-in slide-in-from-top-4 ${notification.type === 'success' ? 'bg-white border-emerald-100 text-emerald-700' : 'bg-white border-red-100 text-red-700'
+          }`}>
           {notification.type === 'success' ? <CheckCircle2 size={20} className="text-emerald-500" /> : <AlertCircle size={20} className="text-red-500" />}
           <span className="font-semibold text-sm">{notification.message}</span>
         </div>
@@ -477,11 +454,10 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab.id
-                ? 'bg-white text-blue-700 shadow-sm'
-                : 'text-slate-600 hover:text-slate-800'
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.id
+              ? 'bg-white text-blue-700 shadow-sm'
+              : 'text-slate-600 hover:text-slate-800'
+              }`}
           >
             <tab.icon size={18} />
             {tab.label}
@@ -548,11 +524,10 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                       ฿{formatThaiCurrency(salaryData[emp.id]?.baseSalary || 0)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                        emp.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${emp.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
                         emp.status === 'resigned' ? 'bg-slate-100 text-slate-600' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
+                          'bg-amber-100 text-amber-700'
+                        }`}>
                         {emp.status === 'active' ? 'ปฏิบัติงาน' : emp.status === 'resigned' ? 'ลาออก' : 'พักงาน'}
                       </span>
                     </td>
@@ -629,7 +604,29 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                   อนุมัติและบันทึกบัญชี
                 </button>
               )}
-              <button className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
+              <button
+                onClick={() => {
+                  const headers = ['พนักงาน', 'เงินเดือน', 'รายได้รวม', 'หัก ณ ที่จ่าย', 'ประกันสังคม', 'รับสุทธิ', 'สถานะ'];
+                  const rows = filteredPayslips.map(ps => [
+                    getEmployeeName(ps.employeeId),
+                    ps.earnings.baseSalary || 0,
+                    ps.totalEarnings,
+                    ps.wht,
+                    ps.deductions.sso,
+                    ps.netPay,
+                    ps.status === 'approved' ? 'อนุมัติแล้ว' : 'รอตรวจ'
+                  ]);
+                  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `payroll_${selectedYear}_${selectedMonth}.csv`;
+                  link.click();
+                  URL.revokeObjectURL(url);
+                }}
+                className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
                 <Download size={18} />
                 Export Excel
               </button>
@@ -698,11 +695,10 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
                           <p className="text-xs text-slate-500">สุทธิ</p>
                           <p className="font-bold text-emerald-600">฿{formatThaiCurrency(ps.netPay)}</p>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          ps.status === 'draft' ? 'bg-amber-100 text-amber-700' :
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${ps.status === 'draft' ? 'bg-amber-100 text-amber-700' :
                           ps.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                          'bg-blue-100 text-blue-700'
-                        }`}>
+                            'bg-blue-100 text-blue-700'
+                          }`}>
                           {ps.status === 'draft' ? 'รอตรวจ' : ps.status === 'approved' ? 'อนุมัติแล้ว' : 'จ่ายแล้ว'}
                         </span>
                         {expandedPayslip === ps.id ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
@@ -792,11 +788,78 @@ const PayrollManagement: React.FC<Props> = ({ clients, onPostJournal }) => {
 
                         {/* Actions */}
                         <div className="mt-4 pt-4 border-t border-slate-200 flex gap-2">
-                          <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors">
-                            <Printer size={16} />
-                            พิมพ์สลิป
+                          <button
+                            onClick={() => {
+                              // Find employee
+                              const emp = employees.find(e => e.id === ps.employeeId);
+                              if (!emp) return;
+
+                              // Find client
+                              const client = clients.find(c => c.id === selectedClientId);
+
+                              // Generate PDF pay slip
+                              const generator = new PremiumPDFGenerator();
+                              const companyInfo: CompanyInfo = {
+                                name: client?.name || 'Company',
+                                taxId: client?.tax_id || '0000000000000'
+                              };
+
+                              const blob = generator.generatePaySlip({
+                                name: `${emp.titleTh}${emp.firstNameTh} ${emp.lastNameTh}`,
+                                position: emp.position,
+                                department: emp.department || '-',
+                                employeeId: emp.employeeCode,
+                                period: `${new Date().toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}`,
+                                earnings: [
+                                  { name: 'เงินเดือน', amount: ps.earnings.baseSalary || 0 },
+                                  { name: 'ค่าตำแหน่ง', amount: ps.earnings.positionAllowance || 0 },
+                                  { name: 'ค่าที่พัก', amount: ps.earnings.housingAllowance || 0 },
+                                  { name: 'ค่าเดินทาง', amount: ps.earnings.transportAllowance || 0 },
+                                  { name: 'โอที', amount: ps.earnings.overtime || 0 },
+                                  { name: 'โบนัส', amount: ps.earnings.bonus || 0 },
+                                  { name: 'ค่าคอมมิชชั่น', amount: ps.earnings.commission || 0 }
+                                ].filter(e => e.amount > 0),
+                                deductions: [
+                                  { name: 'ประกันสังคม', amount: ps.deductions.sso },
+                                  { name: 'กองทุนสำรองเลี้ยงชีพ', amount: ps.deductions.providentFund || 0 },
+                                  { name: 'ภาษีหัก ณ ที่จ่าย', amount: ps.wht }
+                                ].filter(d => d.amount > 0),
+                                bankAccount: emp.bankAccount || undefined
+                              }, companyInfo);
+
+                              // Download
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `PaySlip_${emp.employeeCode}_${new Date().toISOString().slice(0, 7)}.pdf`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            <Download size={16} />
+                            Export PDF
                           </button>
-                          <button className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors">
+                          <button
+                            onClick={() => window.print()}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors"
+                          >
+                            <Printer size={16} />
+                            Print
+                          </button>
+                          <button
+                            onClick={() => {
+                              console.log('Send email clicked for employee payslip');
+                              // Email functionality would require SMTP configuration
+                              // For now show in-app notification
+                              const notification = document.createElement('div');
+                              notification.className = 'fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in slide-in-from-bottom duration-200';
+                              notification.textContent = 'กำลังเตรียมส่งอีเมล... (ต้องตั้งค่า SMTP Server)';
+                              document.body.appendChild(notification);
+                              setTimeout(() => notification.remove(), 3000);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:bg-white rounded-lg transition-colors"
+                          >
                             <Send size={16} />
                             ส่งอีเมล
                           </button>

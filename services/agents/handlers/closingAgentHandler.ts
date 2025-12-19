@@ -7,10 +7,11 @@
  * - ปิดบัญชี P&L → Retained Earnings
  */
 
-import { AgentHandler, AgentInput, AgentOutput, AgentContext } from '../agentOrchestrator';
-import { PostedGLEntry, FixedAsset } from '../../types';
-import { databaseService } from '../database';
-import periodClosing from '../periodClosing';
+import { AgentHandler, AgentContext } from '../agentOrchestrator';
+import { AgentInput, AgentOutput } from '../../../types/agents';
+import { PostedGLEntry, FixedAsset, Client } from '../../../types';
+import { databaseService } from '../../database';
+import periodClosing from '../../periodClosing';
 
 // ============================================================================
 // CLOSING AGENT TYPES
@@ -49,22 +50,29 @@ export interface ClosingAgentOutput extends AgentOutput {
     periodLocked: boolean;
     allEntriesPosted: PostedGLEntry[];
     processingTime: number;
+    message?: string;
+    messageTh?: string;
+    escalationRequired?: boolean;
+    escalationReason?: string;
+    suggestions?: Array<{
+        action: string;
+        description: string;
+        priority: string;
+    }>;
+    confidence?: number;
 }
 
 // ============================================================================
-// CLOSING AGENT HANDLER
+// CLOSING AGENT HANDLER IMPLEMENTATION
 // ============================================================================
 
-export const closingAgentHandler: AgentHandler = async (
+const executeClosingAgent = async (
     input: ClosingAgentInput,
     context: AgentContext
 ): Promise<ClosingAgentOutput> => {
     const startTime = Date.now();
     const output: ClosingAgentOutput = {
-        agentName: 'closing',
         success: false,
-        message: '',
-        messageTh: '',
         period: input.period,
         periodLocked: false,
         allEntriesPosted: [],
@@ -88,7 +96,7 @@ export const closingAgentHandler: AgentHandler = async (
             return output;
         }
 
-        const periodGL = glEntries.filter(e => e.date.startsWith(input.period));
+        const periodGL = glEntries.filter((e: PostedGLEntry) => e.date.startsWith(input.period));
 
         // ========================================================================
         // STEP 1: Calculate Depreciation
@@ -103,7 +111,7 @@ export const closingAgentHandler: AgentHandler = async (
             output.depreciationResult = {
                 entriesCount: depreResult.entries.length,
                 totalAmount: depreResult.totalDepreciation,
-                details: depreResult.details.map(d => ({
+                details: depreResult.details.map((d: { asset: FixedAsset; monthly: number }) => ({
                     assetName: d.asset.name,
                     amount: d.monthly
                 }))
@@ -156,7 +164,7 @@ export const closingAgentHandler: AgentHandler = async (
 
             // Retrieve posted entries for output
             const allPosted = await databaseService.getGLEntriesByClient(input.clientId);
-            output.allEntriesPosted = allPosted.filter(e =>
+            output.allEntriesPosted = allPosted.filter((e: PostedGLEntry) =>
                 postedIds.includes(e.id) || e.date.startsWith(input.period)
             );
         }
@@ -170,7 +178,7 @@ export const closingAgentHandler: AgentHandler = async (
 
             // Log the action
             await databaseService.addLog({
-                action: 'PERIOD_LOCK',
+                action: 'CLOSE_PERIOD',
                 details: `Locked period ${input.period} for client ${input.clientId}`,
                 user_id: context.userId || 'ai-agent',
                 user_name: 'AI Agent',
@@ -228,6 +236,26 @@ export const closingAgentHandler: AgentHandler = async (
 };
 
 // ============================================================================
+// EXPORT AS PROPER AGENT HANDLER
+// ============================================================================
+
+export const closingAgentHandler: AgentHandler = {
+    async execute(input: AgentInput, context: AgentContext): Promise<AgentOutput> {
+        return executeClosingAgent(input as ClosingAgentInput, context);
+    },
+
+    canHandle(input: AgentInput): boolean {
+        return input.type === 'depreciation' || input.type === 'accruals' ||
+            input.type === 'provisions' || input.type === 'trial_balance_check' ||
+            input.type === 'closing';
+    },
+
+    getRequiredPermissions(): string[] {
+        return ['gl:write', 'period:lock', 'asset:read'];
+    }
+};
+
+// ============================================================================
 // VALIDATION HELPER
 // ============================================================================
 
@@ -254,17 +282,17 @@ export const validateClosingReadiness = async (
         databaseService.getBankTransactionsByClient(clientId)
     ]);
 
-    const periodDocs = documents.filter(d =>
+    const periodDocs = documents.filter((d: any) =>
         d.ai_data?.header_data?.issue_date?.startsWith(period)
     );
-    const periodGL = glEntries.filter(e => e.date.startsWith(period));
-    const periodBank = bankTxns.filter(t => t.date.startsWith(period));
+    const periodGL = glEntries.filter((e: PostedGLEntry) => e.date.startsWith(period));
+    const periodBank = bankTxns.filter((t: any) => t.date.startsWith(period));
 
-    const pendingDocs = periodDocs.filter(d => d.status !== 'approved');
-    const unmatchedBank = periodBank.filter(t => !t.matched_doc_id);
+    const pendingDocs = periodDocs.filter((d: any) => d.status !== 'approved');
+    const unmatchedBank = periodBank.filter((t: any) => !t.matched_doc_id);
 
-    const totalDebit = periodGL.reduce((sum, e) => sum + (e.debit || 0), 0);
-    const totalCredit = periodGL.reduce((sum, e) => sum + (e.credit || 0), 0);
+    const totalDebit = periodGL.reduce((sum: number, e: PostedGLEntry) => sum + (e.debit || 0), 0);
+    const totalCredit = periodGL.reduce((sum: number, e: PostedGLEntry) => sum + (e.credit || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
 
     const issues: Array<{ severity: 'error' | 'warning'; message: string }> = [];

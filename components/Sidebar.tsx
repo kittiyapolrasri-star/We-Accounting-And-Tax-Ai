@@ -29,11 +29,11 @@ interface MenuGroup {
 }
 
 const WeLogo = () => (
-  <svg width="40" height="30" viewBox="0 0 50 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-    <path d="M10 25L18 17" stroke="#3B82F6" strokeWidth="8" strokeLinecap="round" />
-    <path d="M18 17L28 27" stroke="#22D3EE" strokeWidth="8" strokeLinecap="round" />
-    <path d="M28 27L42 5" stroke="#3B82F6" strokeWidth="8" strokeLinecap="round" />
-  </svg>
+  <img
+    src="/icon/S__111992841_0.jpg"
+    alt="Company Logo"
+    className="w-10 h-10 object-contain rounded-lg shadow-sm shrink-0"
+  />
 );
 
 const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manager' }) => {
@@ -91,7 +91,8 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
       items: [
         { id: 'clients', label: 'ทะเบียนลูกค้า', icon: Building },
         { id: 'master-data', label: 'ข้อมูลหลัก', icon: Database },
-        { id: 'sales-import', label: 'นำเข้ายอดขาย', icon: FileSpreadsheet, badge: 'NEW' },
+        { id: 'data-import', label: 'นำเข้าข้อมูล (Wizard)', icon: FileSpreadsheet, badge: 'PRO' },
+        { id: 'sales-import', label: 'นำเข้ายอดขาย', icon: FileSpreadsheet },
         { id: 'ecommerce-sync', label: 'เชื่อม E-Commerce', icon: ShoppingCart },
       ]
     },
@@ -128,6 +129,17 @@ const Sidebar: React.FC<Props> = ({ activeView, onChangeView, userRole = 'Manage
         { id: 'recurring-tasks', label: 'งานประจำอัตโนมัติ', icon: RefreshCw },
         { id: 'automation', label: 'ตั้งค่า Automation', icon: Settings },
         { id: 'ai-agents', label: 'AI Agents', icon: Bot, badge: 'BETA' },
+      ]
+    },
+    {
+      id: 'settings',
+      label: 'ตั้งค่าระบบ',
+      icon: Settings,
+      items: [
+        { id: 'system-settings', label: 'ตั้งค่าทั่วไป', icon: Settings },
+        { id: 'company-profile', label: 'ข้อมูลสำนักงาน', icon: Building },
+        { id: 'chart-of-accounts', label: 'ผังบัญชีมาตรฐาน', icon: FileText },
+        { id: 'backup-restore', label: 'สำรอง & กู้คืน', icon: Database },
       ]
     },
   ];

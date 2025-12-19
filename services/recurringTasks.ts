@@ -459,7 +459,9 @@ class RecurringTasksService {
                     priority: template.priority,
                     category: template.category,
                     clientId,
-                    assignedTo: assigneeId || undefined,
+                    assignedTo: assigneeId || null,
+                    assignedBy: 'system',
+                    assignedAt: now.toISOString(),
                     dueDate: dueDate.toISOString(),
                     estimatedHours: template.estimatedHours,
                     checklist: template.checklist.map((item, idx) => ({
@@ -470,22 +472,23 @@ class RecurringTasksService {
                     })),
                     progress: 0,
                     timeSpent: 0,
+                    timeEntries: [],
                     comments: [],
-                    activity: [{
+                    activityLog: [{
                         id: `act-${Date.now()}`,
-                        type: 'created',
+                        action: 'created',
                         timestamp: now.toISOString(),
                         userId: 'system',
                         userName: 'ระบบอัตโนมัติ',
                         details: `สร้างจากงานประจำ: ${template.name}`
                     }],
-                    attachments: [],
-                    watchers: [],
                     tags: ['recurring', template.taxFormType || template.category],
+                    properties: [],
                     createdAt: now.toISOString(),
                     updatedAt: now.toISOString(),
-                    createdByAgent: true,
-                    canBeAutomated: false
+                    createdByAgent: 'system',
+                    canBeAutomated: false,
+                    automationAttempts: 0
                 };
 
                 const taskRef = await addDoc(collection(db, COLLECTIONS.TASKS), task);

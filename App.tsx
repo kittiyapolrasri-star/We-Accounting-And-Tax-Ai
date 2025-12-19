@@ -48,6 +48,12 @@ import NotificationCenter, { NotificationBell } from './components/NotificationC
 import ECommerceSyncDashboard from './components/ECommerceSyncDashboard';
 import RecurringTasksManager from './components/RecurringTasksManager';
 import SalesDataImport from './components/SalesDataImport';
+import SimpleAddClientModal from './components/SimpleAddClientModal';
+import EditClientModal from './components/EditClientModal';
+import DocumentUploadModal, { UploadContext } from './components/DocumentUploadModal';
+import DataImportWizard, { ImportContext } from './components/DataImportWizard';
+import { ImportDataType } from './services/DataImportService';
+import SystemSettings from './components/SystemSettings';
 
 // AI Agents Hook
 import { useAgents } from './hooks/useAgents';
@@ -90,10 +96,16 @@ const AppContent: React.FC = () => {
 
     // Specific View States
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [showAddClientModal, setShowAddClientModal] = useState(false);
+    const [showEditClientModal, setShowEditClientModal] = useState(false);
     const [reviewDocId, setReviewDocId] = useState<string | null>(null);
 
     // Upload Queue State
     const [uploadQueue, setUploadQueue] = useState<File[]>([]);
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [pendingUploadFiles, setPendingUploadFiles] = useState<File[]>([]);
+    const [uploadContext, setUploadContext] = useState<UploadContext | null>(null);
+    const [showDataImportWizard, setShowDataImportWizard] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Get current user info from auth context
@@ -185,15 +197,21 @@ const AppContent: React.FC = () => {
 
     const resolveRelatedIssues = async (docId: string) => {
         let issuesResolvedCount = 0;
-        const updatedClients = clients.map(client => {
-            const relatedIssues = client.current_workflow.issues.filter(i => i.related_doc_id === docId);
+        const updatedClients = clients.map((client: Client) => {
+            const relatedIssues = client.current_workflow?.issues?.filter((i: IssueTicket) => i.related_doc_id === docId) || [];
             if (relatedIssues.length > 0) {
                 issuesResolvedCount += relatedIssues.length;
-                const newClient = {
+                const newClient: Client = {
                     ...client,
                     current_workflow: {
-                        ...client.current_workflow,
-                        issues: client.current_workflow.issues.filter(i => i.related_doc_id !== docId)
+                        month: client.current_workflow?.month || new Date().toISOString().slice(0, 7),
+                        vat_status: client.current_workflow?.vat_status || 'Not Started',
+                        wht_status: client.current_workflow?.wht_status || 'Not Started',
+                        closing_status: client.current_workflow?.closing_status || 'Not Started',
+                        is_locked: client.current_workflow?.is_locked || false,
+                        doc_count: client.current_workflow?.doc_count || 0,
+                        pending_count: client.current_workflow?.pending_count || 0,
+                        issues: client.current_workflow?.issues?.filter((i: IssueTicket) => i.related_doc_id !== docId) || []
                     }
                 };
                 // Async update in background
@@ -294,11 +312,20 @@ const AppContent: React.FC = () => {
     const handleUpdateClientStatus = async (status: Partial<Client['current_workflow']>) => {
         if (!selectedClientId) return;
 
-        const updatedClients = clients.map(c => {
-            if (c.id === selectedClientId) {
-                const updatedClient = {
+        const updatedClients = clients.map((c: Client) => {
+            if (c.id === selectedClientId && c.current_workflow) {
+                const updatedClient: Client = {
                     ...c,
-                    current_workflow: { ...c.current_workflow, ...status }
+                    current_workflow: {
+                        month: c.current_workflow.month || new Date().toISOString().slice(0, 7),
+                        vat_status: status?.vat_status ?? c.current_workflow.vat_status ?? 'Not Started',
+                        wht_status: status?.wht_status ?? c.current_workflow.wht_status ?? 'Not Started',
+                        closing_status: status?.closing_status ?? c.current_workflow.closing_status ?? 'Not Started',
+                        is_locked: status?.is_locked ?? c.current_workflow.is_locked ?? false,
+                        doc_count: status?.doc_count ?? c.current_workflow.doc_count ?? 0,
+                        pending_count: status?.pending_count ?? c.current_workflow.pending_count ?? 0,
+                        issues: status?.issues ?? c.current_workflow.issues ?? []
+                    }
                 };
                 databaseService.updateClient(updatedClient);
                 return updatedClient;
@@ -456,6 +483,25 @@ const AppContent: React.FC = () => {
         }
     };
 
+    // --- BATCH DELETE ---
+    const handleBatchDelete = async (docIds: string[]) => {
+        try {
+            // Delete from database
+            for (const docId of docIds) {
+                await databaseService.deleteDocument(docId);
+            }
+
+            // Update local state
+            setDocuments(prev => prev.filter(d => !docIds.includes(d.id)));
+
+            showNotification(`ลบเอกสาร ${docIds.length} รายการสำเร็จ`, 'success');
+            await logAction('UPLOAD', `Deleted ${docIds.length} documents: ${docIds.join(', ')}`);
+        } catch (error) {
+            console.error('Error deleting documents:', error);
+            showNotification('เกิดข้อผิดพลาดในการลบเอกสาร', 'error');
+        }
+    };
+
     const handleSaveEntry = async (data: AccountingResponse, assignedStaffId: string | null) => {
         if (!reviewDocId) return;
 
@@ -464,7 +510,7 @@ const AppContent: React.FC = () => {
 
         // Check if client Period is Locked
         const client = clients.find(c => c.name === doc.client_name);
-        if (client && client.current_workflow.is_locked) {
+        if (client && client.current_workflow?.is_locked) {
             showNotification("ไม่สามารถบันทึกได้เนื่องจากงวดบัญชีถูกปิดแล้ว (Period Locked)", 'error');
             return;
         }
@@ -759,12 +805,218 @@ const AppContent: React.FC = () => {
         }
 
         if (validFiles.length > 0) {
-            setUploadQueue(prev => [...prev, ...validFiles]);
-            validFiles.forEach(file => processQueueItem(file));
+            // *** NEW: Show upload modal for client/period selection first ***
+            setPendingUploadFiles(validFiles);
+            setShowUploadModal(true);
         }
 
         // Reset input to allow re-selecting same file
         event.target.value = '';
+    };
+
+    // NEW: Handle upload confirm from modal
+    const handleUploadConfirm = (context: UploadContext) => {
+        setUploadContext(context);
+        setShowUploadModal(false);
+
+        // Now process the files with the selected context
+        if (pendingUploadFiles.length > 0) {
+            setUploadQueue(prev => [...prev, ...pendingUploadFiles]);
+            pendingUploadFiles.forEach(file => processQueueItemWithContext(file, context));
+            setPendingUploadFiles([]);
+        }
+    };
+
+    // NEW: Process queue item with upload context
+    const processQueueItemWithContext = async (file: File, context: UploadContext) => {
+        const tempId = `TEMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Optimistic Update with selected client
+        const initialDoc: DocumentRecord = {
+            id: tempId,
+            uploaded_at: new Date().toISOString(),
+            filename: file.name,
+            status: 'processing',
+            assigned_to: null,
+            client_name: context.clientName,
+            clientId: context.clientId,
+            amount: 0,
+            ai_data: null,
+            mime_type: file.type,
+            // Use context period (may be overridden by AI if autoDetectPeriod is true)
+            year: context.autoDetectPeriod ? undefined : context.year,
+            month: context.autoDetectPeriod ? undefined : String(context.month).padStart(2, '0'),
+            period: context.autoDetectPeriod ? undefined : context.period
+        };
+
+        setDocuments(prev => [initialDoc, ...prev]);
+
+        try {
+            // 1. Upload file to Firebase Storage (if configured)
+            let fileUrl: string | undefined;
+            let storagePath: string | undefined;
+
+            try {
+                const { uploadDocument } = await import('./services/documentStorage');
+                const uploadResult = await uploadDocument(
+                    file,
+                    context.clientId,
+                    'invoice',
+                    CURRENT_USER_ID
+                );
+                if (uploadResult.success) {
+                    fileUrl = uploadResult.fileUrl;
+                    storagePath = uploadResult.storagePath;
+                    console.log('✅ File uploaded to storage:', storagePath);
+                }
+            } catch (uploadError) {
+                console.warn('File upload skipped (Storage not configured):', uploadError);
+            }
+
+            // 1.5 Image Enhancement for low-quality images
+            let processableFile = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                    const { needsEnhancement, enhanceImage } = await import('./services/imageEnhancement');
+                    const needsWork = await needsEnhancement(file);
+
+                    if (needsWork) {
+                        console.log('🔧 Enhancing image for better OCR...');
+                        const enhanced = await enhanceImage(file, {
+                            autoCorrect: true,
+                            sharpen: true,
+                            contrast: 1.2,
+                        });
+
+                        if (enhanced.enhanced) {
+                            const base64Response = await fetch(enhanced.dataUrl);
+                            const blob = await base64Response.blob();
+                            processableFile = new File([blob], file.name, { type: enhanced.mimeType });
+                            console.log(`✅ Image enhanced: ${enhanced.corrections.join(', ')}`);
+                        }
+                    }
+                } catch (enhanceError) {
+                    console.warn('Image enhancement skipped:', enhanceError);
+                }
+            }
+
+            // 2. Analyze with Gemini via Cloud Functions (secure)
+            const rawResult = await analyzeDocument(processableFile, context.clientId, context.clientName);
+
+            // 3. Post-Process with Automation Engine
+            const refinedResult = applyVendorRules(rawResult);
+
+            // 4. Determine final period (auto-detect or manual)
+            let finalYear: number;
+            let finalMonth: string;
+            let finalPeriod: string;
+
+            if (context.autoDetectPeriod && refinedResult.header_data.issue_date) {
+                // Auto-detect from AI-extracted date
+                const aiDate = new Date(refinedResult.header_data.issue_date);
+                if (!isNaN(aiDate.getTime())) {
+                    finalYear = aiDate.getFullYear();
+                    finalMonth = String(aiDate.getMonth() + 1).padStart(2, '0');
+                    finalPeriod = `${finalYear}-${finalMonth}`;
+                    console.log(`🤖 Auto-detected period from AI: ${finalPeriod}`);
+                } else {
+                    // Fallback to manual selection
+                    finalYear = context.year;
+                    finalMonth = String(context.month).padStart(2, '0');
+                    finalPeriod = context.period;
+                }
+            } else {
+                // Use manual selection
+                finalYear = context.year;
+                finalMonth = String(context.month).padStart(2, '0');
+                finalPeriod = context.period;
+            }
+
+            // 5. Check for duplicates
+            try {
+                const { checkDuplicate } = await import('./services/documentValidation');
+                const invNumber = refinedResult.header_data.inv_number;
+                const vendorTaxId = refinedResult.parties.counterparty.tax_id;
+                const amount = refinedResult.financials.grand_total;
+                const date = refinedResult.header_data.issue_date;
+
+                const existingDocs = documents.filter(d => d.clientId === context.clientId);
+                const duplicateCheck = await checkDuplicate(existingDocs, invNumber, vendorTaxId, amount, date);
+
+                if (duplicateCheck.isDuplicate) {
+                    const matchType = duplicateCheck.matchType === 'exact' ? 'เลขที่เอกสารซ้ำ' : 'ยอดเงินและคู่ค้าใกล้เคียง';
+                    showNotification(`⚠️ พบเอกสารที่อาจซ้ำ: ${matchType}`, 'warning');
+                    console.warn('Potential duplicate detected:', duplicateCheck.matches);
+                }
+            } catch (dupError) {
+                console.warn('Duplicate check failed (non-critical):', dupError);
+            }
+
+            // 6. Create finalized document with storage references and period indexing
+            const finalizedDoc: DocumentRecord = {
+                id: `D${Date.now()}`,
+                uploaded_at: new Date().toISOString(),
+                filename: file.name,
+                status: refinedResult.status === 'auto_approved' ? 'approved' : 'pending_review',
+                assigned_to: null,
+                client_name: context.clientName,
+                clientId: context.clientId,
+                amount: refinedResult.financials.grand_total,
+                ai_data: refinedResult,
+                file_url: fileUrl,
+                storage_path: storagePath,
+                mime_type: file.type,
+                // ** Use determined period **
+                year: finalYear,
+                month: finalMonth,
+                period: finalPeriod
+            };
+
+            // Replace temp doc with finalized
+            setDocuments(prev => prev.map(d => d.id === tempId ? finalizedDoc : d));
+
+            // Persist to database
+            await databaseService.updateDocument(finalizedDoc);
+
+            // Log action
+            await logAction('UPLOAD', `Uploaded ${file.name} to ${context.clientName} (period: ${finalPeriod})`);
+            showNotification(`✅ อัปโหลด "${file.name}" สำเร็จ → งวด ${finalPeriod}`);
+
+            // Auto-create fixed assets if detected
+            if (refinedResult.accounting_entry.journal_lines.some(l => l.account_code.startsWith('12'))) {
+                const newAssets: FixedAsset[] = [];
+                refinedResult.accounting_entry.journal_lines.forEach(line => {
+                    if (line.account_code.startsWith('12')) {
+                        const newAsset: FixedAsset = {
+                            id: `FA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                            clientId: context.clientId,
+                            asset_code: `${line.account_code}-${String(fixedAssets.length + 1).padStart(3, '0')}`,
+                            name: line.account_name_th,
+                            category: line.account_code.startsWith('124') ? 'Equipment' : 'Building',
+                            acquisition_date: refinedResult.header_data.issue_date,
+                            cost: line.amount,
+                            residual_value: 1,
+                            useful_life_years: 5,
+                            accumulated_depreciation_bf: 0,
+                            current_month_depreciation: (line.amount - 1) / 5 / 12
+                        };
+                        newAssets.push(newAsset);
+                    }
+                });
+                if (newAssets.length > 0) {
+                    setFixedAssets([...fixedAssets, ...newAssets]);
+                }
+            }
+
+        } catch (error: any) {
+            console.error('❌ Document Processing Error:', error);
+            setDocuments(prev => prev.map(d =>
+                d.id === tempId ? { ...d, status: 'rejected', ai_data: null } : d
+            ));
+            showNotification(`❌ ไม่สามารถประมวลผล "${file.name}": ${error.message}`, 'error');
+        }
+
+        setUploadQueue(prev => prev.filter(f => f.name !== file.name));
     };
 
     const handleClientPortalUpload = (files: File[], client: Client) => {
@@ -778,6 +1030,139 @@ const AppContent: React.FC = () => {
 
     const handleUploadClick = () => {
         fileInputRef.current?.click();
+    };
+
+    // Handler for Data Import Wizard completion
+    const handleDataImportComplete = async (type: ImportDataType, data: any[], context: ImportContext) => {
+        try {
+            switch (type) {
+                case 'clients':
+                    // Import clients
+                    for (const clientData of data) {
+                        const newClient = {
+                            name: clientData.name,
+                            tax_id: clientData.tax_id,
+                            industry: clientData.industry || 'General',
+                            status: clientData.status || 'Active',
+                            contact_person: clientData.contact_person || '',
+                            contact_email: clientData.contact_email,
+                            contact_phone: clientData.contact_phone,
+                            address: clientData.address,
+                            assigned_staff_id: '',
+                            last_closing_date: new Date().toISOString().split('T')[0]
+                        };
+                        await handleCreateClient(newClient as any);
+                    }
+                    showNotification(`✅ นำเข้าบริษัท ${data.length} รายการสำเร็จ`);
+                    break;
+
+                case 'staff':
+                    // Import staff
+                    for (const staffData of data) {
+                        const newStaff: Omit<Staff, 'id'> = {
+                            name: staffData.name,
+                            email: staffData.email,
+                            role: staffData.role || 'Junior Accountant',
+                            status: staffData.status || 'active',
+                            phone: staffData.phone,
+                            department: staffData.department,
+                            active_tasks: 0
+                        };
+                        await handleAddStaff(newStaff as any);
+                    }
+                    showNotification(`✅ นำเข้าพนักงาน ${data.length} รายการสำเร็จ`);
+                    break;
+
+                case 'opening_balance':
+                case 'journal_entries':
+                    // Use context from wizard (has clientId and date)
+                    if (!context.clientId) {
+                        showNotification('กรุณาเลือกบริษัทก่อนนำเข้ายอดยกมา', 'error');
+                        return;
+                    }
+
+                    const newEntries: PostedGLEntry[] = data.map((row, idx) => ({
+                        id: `GL-IMP-${Date.now()}-${idx}`,
+                        clientId: context.clientId,
+                        date: context.date || row.date || new Date().toISOString().split('T')[0],
+                        doc_no: row.doc_no || `OB-${Date.now()}`,
+                        description: type === 'opening_balance' ? 'ยอดยกมา (Opening Balance)' : row.description || '',
+                        account_code: row.account_code,
+                        account_name: row.account_name,
+                        department_code: row.department_code,
+                        debit: parseFloat(row.debit) || 0,
+                        credit: parseFloat(row.credit) || 0,
+                        system_generated: type === 'opening_balance'
+                    }));
+
+                    await handlePostJournalEntry(newEntries);
+                    showNotification(`✅ นำเข้า${type === 'opening_balance' ? 'ยอดยกมา' : 'รายการบัญชี'} ${data.length} รายการ สำหรับ "${context.clientName}" สำเร็จ`);
+                    break;
+
+                case 'fixed_assets':
+                    // Use context from wizard
+                    if (!context.clientId) {
+                        showNotification('กรุณาเลือกบริษัทก่อนนำเข้าทรัพย์สิน', 'error');
+                        return;
+                    }
+
+                    const newAssets: FixedAsset[] = data.map((row, idx) => ({
+                        id: `FA-IMP-${Date.now()}-${idx}`,
+                        clientId: context.clientId,
+                        asset_code: row.asset_code,
+                        name: row.name,
+                        category: row.category || 'Equipment',
+                        acquisition_date: row.acquisition_date,
+                        cost: parseFloat(row.cost) || 0,
+                        residual_value: parseFloat(row.residual_value) || 1,
+                        useful_life_years: parseInt(row.useful_life_years) || 5,
+                        accumulated_depreciation_bf: parseFloat(row.accumulated_depreciation_bf) || 0,
+                        current_month_depreciation: 0
+                    }));
+
+                    setFixedAssets(prev => [...prev, ...newAssets]);
+                    for (const asset of newAssets) {
+                        await databaseService.addAsset(asset);
+                    }
+                    showNotification(`✅ นำเข้าทรัพย์สินถาวร ${data.length} รายการ สำหรับ "${context.clientName}" สำเร็จ`);
+                    break;
+
+                case 'vendors':
+                    // Use context from wizard
+                    const newRules: VendorRule[] = data.map((row, idx) => ({
+                        id: `VR-IMP-${Date.now()}-${idx}`,
+                        clientId: context.clientId || undefined,
+                        vendorNameKeyword: row.name,
+                        accountCode: row.default_account || '52100',
+                        accountName: 'ค่าใช้จ่าย',
+                        vatType: 'CLAIMABLE' as const,
+                        whtRate: parseFloat(row.wht_rate) || 0,
+                        description: `${row.name} - ${row.tax_id || ''}`,
+                        isActive: true,
+                        createdAt: new Date().toISOString()
+                    }));
+
+                    setVendorRules(prev => [...prev, ...newRules]);
+                    for (const rule of newRules) {
+                        await databaseService.addRule(rule);
+                    }
+                    showNotification(`✅ นำเข้าคู่ค้า ${data.length} รายการสำเร็จ`);
+                    break;
+
+                case 'chart_of_accounts':
+                    // Chart of accounts is stored in constants, show info
+                    showNotification(`ผังบัญชี ${data.length} รายการ พร้อมใช้งาน (ระบบใช้ผังบัญชีมาตรฐาน)`, 'warning');
+                    break;
+
+                default:
+                    showNotification(`นำเข้าข้อมูลประเภท ${type} สำเร็จ`);
+            }
+
+            await logAction('IMPORT', `Imported ${data.length} ${type} records for ${context.clientName || 'global'}`);
+        } catch (error: any) {
+            console.error('Import error:', error);
+            showNotification(`เกิดข้อผิดพลาดในการนำเข้า: ${error.message}`, 'error');
+        }
     };
 
     const handleCancelEntry = () => {
@@ -848,6 +1233,81 @@ const AppContent: React.FC = () => {
 
     const handleUpdateRules = async (newRules: VendorRule[]) => {
         setVendorRules(newRules);
+    };
+
+    const handleCreateClient = async (clientData: Omit<Client, 'id' | 'created_at' | 'updated_at'>) => {
+        try {
+            const newClient = {
+                ...clientData,
+                status: 'Active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            } as any;
+
+            const newId = await databaseService.addClient(newClient);
+            const createdClient = { ...newClient, id: newId };
+
+            setClients(prev => [...prev, createdClient as Client]);
+            setShowAddClientModal(false);
+            showNotification(`เพิ่มลูกค้า ${clientData.name} สำเร็จ`, 'success');
+        } catch (error) {
+            console.error('Error creating client:', error);
+            showNotification('ไม่สามารถเพิ่มลูกค้าได้', 'error');
+        }
+    };
+
+    // --- EDIT CLIENT ---
+    const handleEditClient = async (clientData: Partial<Client>) => {
+        try {
+            if (!clientData.id) return;
+
+            const updatedClient = {
+                ...clientData,
+                updated_at: new Date().toISOString()
+            } as Client;
+
+            await databaseService.updateClient(updatedClient);
+
+            setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+            setShowEditClientModal(false);
+            showNotification(`อัปเดตข้อมูลลูกค้า ${clientData.name} สำเร็จ`, 'success');
+        } catch (error) {
+            console.error('Error updating client:', error);
+            showNotification('ไม่สามารถอัปเดตข้อมูลลูกค้าได้', 'error');
+        }
+    };
+
+    // --- STAFF MANAGEMENT HANDLERS ---
+    const handleAddStaff = async (staffData: Omit<Staff, 'id'>) => {
+        try {
+            const newId = await databaseService.addStaff(staffData);
+            const newStaff = { ...staffData, id: newId } as Staff;
+            setStaff(prev => [...prev, newStaff]);
+            showNotification(`เพิ่มพนักงาน ${staffData.name} สำเร็จ`, 'success');
+            await logAction('UPLOAD', `Added new staff: ${staffData.name}`);
+        } catch (error) {
+            console.error('Error adding staff:', error);
+            showNotification('ไม่สามารถเพิ่มพนักงานได้', 'error');
+        }
+    };
+
+    const handleViewStaffHistory = (staffId: string) => {
+        const staffMember = staff.find(s => s.id === staffId);
+        if (staffMember) {
+            // Navigate to staff detail or show history modal
+            setSelectedClientId(null);
+            setCurrentView('ceo-dashboard');
+            showNotification(`กำลังดูประวัติของ ${staffMember.name}`, 'success');
+        }
+    };
+
+    const handleAssignWorkToStaff = (staffId: string) => {
+        const staffMember = staff.find(s => s.id === staffId);
+        if (staffMember) {
+            // Navigate to task creation with pre-selected staff
+            setCurrentView('ceo-dashboard');
+            showNotification(`เลือก ${staffMember.name} สำหรับมอบหมายงาน - ไปที่หน้า CEO Dashboard`, 'success');
+        }
     };
 
     // --- TASK MANAGEMENT HANDLERS ---
@@ -1061,6 +1521,7 @@ const AppContent: React.FC = () => {
                     onUpdateRules={handleUpdateRules}
                     onBack={() => setCurrentView('command-center')}
                     onReviewDoc={handleOpenReview}
+                    onEditClient={() => setShowEditClientModal(true)}
 
                     // SYSTEMATIC: Pass action handlers for Locking & GL Posting & Status Updates
                     onLockPeriod={handleLockPeriod}
@@ -1080,7 +1541,12 @@ const AppContent: React.FC = () => {
             case 'workplace':
                 return <StaffWorkplace currentStaffId={CURRENT_USER_ID} clients={clients} documents={documents} onReviewDoc={handleOpenReview} />;
             case 'staff':
-                return <StaffManagement staff={staff} />;
+                return <StaffManagement
+                    staff={staff}
+                    onAddStaff={handleAddStaff}
+                    onViewHistory={handleViewStaffHistory}
+                    onAssignWork={handleAssignWorkToStaff}
+                />;
             case 'documents':
                 return (
                     <div className="h-full flex flex-col">
@@ -1089,7 +1555,8 @@ const AppContent: React.FC = () => {
                             staff={staff}
                             clients={clients}
                             onReview={handleOpenReview}
-                            onBatchApprove={handleBatchApprove} // Added
+                            onBatchApprove={handleBatchApprove}
+                            onBatchDelete={handleBatchDelete}
                         />
                     </div>
                 );
@@ -1097,7 +1564,7 @@ const AppContent: React.FC = () => {
                 // Pass clientId if we want specific, but global recon view might be needed for staff
                 return <BankReconciliation documents={documents} clients={clients} onPostAdjustment={handlePostJournalEntry} />;
             case 'clients':
-                return <ClientDirectory clients={clients} onSelectClient={handleSelectClient} />;
+                return <ClientDirectory clients={clients} onSelectClient={handleSelectClient} onAddClient={() => setShowAddClientModal(true)} />;
             case 'master-data':
                 return <MasterData clients={clients} />;
             case 'payroll':
@@ -1222,6 +1689,11 @@ const AppContent: React.FC = () => {
                         showNotification(`บันทึกบัญชี ${entries.length} รายการสำเร็จ`, 'success');
                     }}
                 />;
+            case 'data-import':
+                // Open DataImportWizard modal
+                setShowDataImportWizard(true);
+                setCurrentView('smart-dashboard'); // Redirect to dashboard while modal is open
+                return null;
             case 'tax-calendar':
                 return <TaxCalendar
                     clients={clients}
@@ -1254,6 +1726,13 @@ const AppContent: React.FC = () => {
                     glEntries={glEntries}
                     onPostJournal={handlePostJournalEntry}
                     onPublishReport={handlePublishReport}
+                />;
+            case 'system-settings':
+            case 'company-profile':
+            case 'chart-of-accounts':
+            case 'backup-restore':
+                return <SystemSettings
+                    onSave={(settings) => showNotification('บันทึกการตั้งค่าสำเร็จ', 'success')}
                 />;
             default:
                 return <Dashboard documents={documents} staff={staff} clients={clients} />;
@@ -1297,6 +1776,23 @@ const AppContent: React.FC = () => {
                         id: CURRENT_USER_ID,
                         name: CURRENT_USER_NAME
                     }}
+                />
+            )}
+
+            {/* Add Client Modal */}
+            {showAddClientModal && (
+                <SimpleAddClientModal
+                    onClose={() => setShowAddClientModal(false)}
+                    onSubmit={handleCreateClient}
+                />
+            )}
+
+            {/* Edit Client Modal */}
+            {showEditClientModal && selectedClientId && (
+                <EditClientModal
+                    client={clients.find(c => c.id === selectedClientId)!}
+                    onClose={() => setShowEditClientModal(false)}
+                    onSubmit={handleEditClient}
                 />
             )}
 
@@ -1360,6 +1856,27 @@ const AppContent: React.FC = () => {
                     onError={toastError}
                 />
             )}
+
+            {/* Document Upload Modal - Client/Period Selection */}
+            <DocumentUploadModal
+                isOpen={showUploadModal}
+                onClose={() => {
+                    setShowUploadModal(false);
+                    setPendingUploadFiles([]);
+                }}
+                onConfirm={handleUploadConfirm}
+                clients={clients}
+                selectedClientId={selectedClientId || undefined}
+            />
+
+            {/* Data Import Wizard - All data types */}
+            <DataImportWizard
+                isOpen={showDataImportWizard}
+                onClose={() => setShowDataImportWizard(false)}
+                onImportComplete={handleDataImportComplete}
+                clients={clients}
+                selectedClientId={selectedClientId || undefined}
+            />
         </div>
     );
 };

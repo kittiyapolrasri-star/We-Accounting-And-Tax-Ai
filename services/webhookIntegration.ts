@@ -170,6 +170,11 @@ const platformHandlers = {
             orderDate: data.created_at
         }),
 
+        parseOrderPaid: (data: any): Partial<PlatformOrder> => ({
+            paymentStatus: 'paid',
+            paidAt: new Date().toISOString()
+        }),
+
         parseOrderCompleted: (data: any): Partial<PlatformOrder> => ({
             status: 'completed',
             completedDate: new Date().toISOString()
@@ -191,6 +196,16 @@ const platformHandlers = {
             status: 'pending',
             customerName: data.recipient?.name || 'Unknown',
             orderDate: new Date(data.create_time * 1000).toISOString()
+        }),
+
+        parseOrderPaid: (data: any): Partial<PlatformOrder> => ({
+            paymentStatus: 'paid',
+            paidAt: new Date().toISOString()
+        }),
+
+        parseOrderCompleted: (data: any): Partial<PlatformOrder> => ({
+            status: 'completed',
+            completedDate: new Date().toISOString()
         })
     },
 
@@ -220,6 +235,16 @@ const platformHandlers = {
             subtotal: data.price?.subtotal || 0,
             shippingFee: data.price?.deliveryFee || 0,
             orderDate: new Date().toISOString()
+        }),
+
+        parseOrderPaid: (data: any): Partial<PlatformOrder> => ({
+            paymentStatus: 'paid',
+            paidAt: new Date().toISOString()
+        }),
+
+        parseOrderCompleted: (data: any): Partial<PlatformOrder> => ({
+            status: 'completed',
+            completedDate: new Date().toISOString()
         })
     },
 
@@ -238,6 +263,16 @@ const platformHandlers = {
             status: 'pending',
             customerName: data.customer?.display_name || 'Unknown',
             orderDate: new Date().toISOString()
+        }),
+
+        parseOrderPaid: (data: any): Partial<PlatformOrder> => ({
+            paymentStatus: 'paid',
+            paidAt: new Date().toISOString()
+        }),
+
+        parseOrderCompleted: (data: any): Partial<PlatformOrder> => ({
+            status: 'completed',
+            completedDate: new Date().toISOString()
         })
     }
 };

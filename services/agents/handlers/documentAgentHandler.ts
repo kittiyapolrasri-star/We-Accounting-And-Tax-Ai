@@ -5,11 +5,12 @@
  * - รับเอกสาร → วิเคราะห์ → จับคู่รหัสบัญชี → เตรียม Journal Entry
  */
 
-import { AgentHandler, AgentInput, AgentOutput, AgentContext } from '../agentOrchestrator';
-import { DocumentRecord, AccountingResponse, PostedGLEntry } from '../../types';
-import { analyzeDocument } from '../geminiService';
-import { validateGLPosting, GLPostingRequest } from '../accountingValidation';
-import { databaseService } from '../database';
+import { AgentHandler, AgentContext } from '../agentOrchestrator';
+import { AgentInput, AgentOutput } from '../../../types/agents';
+import { DocumentRecord, AccountingResponse, PostedGLEntry } from '../../../types';
+import { analyzeDocument } from '../../geminiService';
+import { validateGLPosting, GLPostingRequest } from '../../accountingValidation';
+import { databaseService } from '../../database';
 
 // ============================================================================
 // DOCUMENT AGENT TYPES
@@ -34,22 +35,29 @@ export interface DocumentAgentOutput extends AgentOutput {
     };
     postedEntryIds?: string[];
     processingTime: number;
+    message?: string;
+    messageTh?: string;
+    escalationRequired?: boolean;
+    escalationReason?: string;
+    suggestions?: Array<{
+        action: string;
+        description: string;
+        priority: string;
+    }>;
+    confidence?: number;
 }
 
 // ============================================================================
 // DOCUMENT AGENT HANDLER
 // ============================================================================
 
-export const documentAgentHandler: AgentHandler = async (
+const executeDocumentAgent = async (
     input: DocumentAgentInput,
     context: AgentContext
 ): Promise<DocumentAgentOutput> => {
     const startTime = Date.now();
     const output: DocumentAgentOutput = {
-        agentName: 'document',
         success: false,
-        message: '',
-        messageTh: '',
         documentId: input.documentId || `DOC-${Date.now()}`,
         processingTime: 0
     };
@@ -61,7 +69,7 @@ export const documentAgentHandler: AgentHandler = async (
         if (input.documentId) {
             // Existing document - retrieve from database
             const docs = await databaseService.getDocuments();
-            const doc = docs.find(d => d.id === input.documentId);
+            const doc = docs.find((d: DocumentRecord) => d.id === input.documentId);
 
             if (!doc) {
                 output.message = `Document ${input.documentId} not found`;
@@ -105,9 +113,7 @@ export const documentAgentHandler: AgentHandler = async (
                 department_code: line.department_code,
                 debit: line.account_side === 'DEBIT' ? line.amount : 0,
                 credit: line.account_side === 'CREDIT' ? line.amount : 0,
-                source_doc_id: output.documentId,
-                created_by: context.userId || 'ai-agent',
-                created_at: new Date().toISOString()
+                source_doc_id: output.documentId
             })
         );
 
@@ -126,8 +132,8 @@ export const documentAgentHandler: AgentHandler = async (
 
         output.validationResult = {
             isValid: validation.isValid,
-            errors: validation.errors.map(e => e.message),
-            warnings: validation.warnings.map(w => w.message)
+            errors: validation.errors.map((e: { message: string }) => e.message),
+            warnings: validation.warnings.map((w: { message: string }) => w.message)
         };
 
         // Check if escalation needed
@@ -140,7 +146,7 @@ export const documentAgentHandler: AgentHandler = async (
 
         if (!validation.isValid) {
             output.escalationRequired = true;
-            output.escalationReason = `Validation failed: ${validation.errors.map(e => e.message).join(', ')}`;
+            output.escalationReason = `Validation failed: ${validation.errors.map((e: { message: string }) => e.message).join(', ')}`;
             output.message = 'Journal entries failed validation';
             output.messageTh = 'รายการบันทึกบัญชีไม่ผ่านการตรวจสอบ';
         }
@@ -154,7 +160,7 @@ export const documentAgentHandler: AgentHandler = async (
                 // Update document status
                 if (input.documentId) {
                     const docs = await databaseService.getDocuments();
-                    const doc = docs.find(d => d.id === input.documentId);
+                    const doc = docs.find((d: DocumentRecord) => d.id === input.documentId);
                     if (doc) {
                         await databaseService.updateDocument({
                             ...doc,
@@ -178,7 +184,7 @@ export const documentAgentHandler: AgentHandler = async (
         output.suggestions = [];
 
         if (aiAnalysis.audit_flags && aiAnalysis.audit_flags.length > 0) {
-            aiAnalysis.audit_flags.forEach(flag => {
+            aiAnalysis.audit_flags.forEach((flag) => {
                 output.suggestions!.push({
                     action: 'review_audit_flag',
                     description: flag.message,
@@ -211,6 +217,24 @@ export const documentAgentHandler: AgentHandler = async (
 };
 
 // ============================================================================
+// EXPORT AS PROPER AGENT HANDLER
+// ============================================================================
+
+export const documentAgentHandler: AgentHandler = {
+    async execute(input: AgentInput, context: AgentContext): Promise<AgentOutput> {
+        return executeDocumentAgent(input as DocumentAgentInput, context);
+    },
+
+    canHandle(input: AgentInput): boolean {
+        return input.type === 'document_analysis' || input.type === 'document';
+    },
+
+    getRequiredPermissions(): string[] {
+        return ['document:read', 'document:analyze', 'gl:write'];
+    }
+};
+
+// ============================================================================
 // SPECIALIZED HANDLERS
 // ============================================================================
 
@@ -230,7 +254,7 @@ export const batchDocumentHandler = async (
     const results: DocumentAgentOutput[] = [];
 
     for (const doc of documents) {
-        const result = await documentAgentHandler(doc, context);
+        const result = await executeDocumentAgent(doc, context);
         results.push(result);
     }
 
@@ -253,16 +277,15 @@ export const reanalyzeDocumentHandler = async (
 ): Promise<DocumentAgentOutput> => {
     // Get existing document
     const docs = await databaseService.getDocumentsByClient(context.clientId || '');
-    const doc = docs.find(d => d.id === documentId);
+    const doc = docs.find((d: DocumentRecord) => d.id === documentId);
 
     if (!doc) {
         return {
-            agentName: 'document',
             success: false,
-            message: 'Document not found for re-analysis',
-            messageTh: 'ไม่พบเอกสารสำหรับวิเคราะห์ใหม่',
             documentId,
             processingTime: 0,
+            message: 'Document not found for re-analysis',
+            messageTh: 'ไม่พบเอกสารสำหรับวิเคราะห์ใหม่',
             escalationRequired: true
         };
     }
@@ -270,8 +293,10 @@ export const reanalyzeDocumentHandler = async (
     // Re-run analysis with merged context
     const mergedContext: AgentContext = { ...context, ...newContext };
 
-    return documentAgentHandler(
+    return executeDocumentAgent(
         {
+            type: 'document_analysis',
+            data: {},
             documentId,
             clientId: mergedContext.clientId || doc.clientId || '',
             autoPost: false
